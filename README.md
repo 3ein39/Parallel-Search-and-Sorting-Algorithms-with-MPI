@@ -52,6 +52,14 @@ The master process is responsible for reading the input data (e.g., array, datas
   * Sample Sort: Implement Sample Sort using MPI collective communication to gather and redistribute data efficiently.
   * Algorithm Visualization is required to be presented.
 
+#### Team tasks 
+
+* Moaz: Prime Number Finding
+* Eng Mariam: Sample Sort
+* Hussein: Bitonic Sort
+* Farah: Quick Search
+* Basma: Radix Sort
+
 ### Performance Analysis
 
   * Students must measure the speedup and efficiency of each algorithm using different numbers of MPI processes and data sizes.
