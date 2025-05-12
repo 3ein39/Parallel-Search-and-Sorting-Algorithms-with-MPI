@@ -1,79 +1,89 @@
 # Parallel Search and Sorting Algorithms with MPI
 
-## Project Title
+## Project Overview
 
-Parallel Search and Sorting Algorithms with MPI
+This project focuses on the implementation and analysis of key parallel algorithms using the Message Passing Interface (MPI). The work demonstrates efficient parallel computing techniques for solving computational problems, including Quick Search, Prime Number Finding, Bitonic Sort, Radix Sort, and Sample Sort. Through rigorous development and experimentation, the project showcases MPI programming skills and advanced parallel algorithm design, communication strategies, and performance evaluation on distributed systems.
 
-## Description
+## Repository Structure
 
-This project focuses on the implementation and analysis of key parallel algorithms using the Message Passing Interface (MPI). Students will apply parallel computing techniques to solve computational problems efficiently, including Quick Search, Prime Number Finding, Bitonic Sort, Radix Sort, and Sample Sort. Through hands-on development and experimentation, the project aims to reinforce MPI programming skills and promote understanding of parallel algorithm design, communication strategies, and performance evaluation on distributed systems.
+- **Source Code**: Core implementation files for each algorithm
+- **Documentation**: Detailed markdown files in the `docs/` directory explaining each algorithm
+- **Input Data**: Sample datasets in the `inputs/` directory
+- **Analysis**: Performance measurements and scaling analysis in `performance_summary.md`
+- **Visualization**: Python script for generating performance graphs
 
-## Team
+## Algorithms Implemented
 
-This is a team-based project. Each student must join a team of 3 at minimum and 6 members at maximum.
+The following parallel algorithms have been implemented with comprehensive documentation:
 
-**Course Team:**
+1. **Quick Search** - A parallel search algorithm using divide-and-conquer
+   - [Documentation](docs/Quick_Search.md)
 
-  * Dr. Masoud Ismail
-  * Eng. Rehab Mahmoud   
-  * Eng. Mahmoud Badry 
+2. **Prime Number Finding** - Parallel techniques to find prime numbers within a specified range
+   - [Documentation](docs/Prime_Number_Search.md)
 
-## Project Submission Information
+3. **Bitonic Sort** - Parallel implementation of the Bitonic sorting algorithm
+   - [Documentation](docs/Bitonic_Sort.md)
 
-  * Each team should send the names of the members over email before 27-04-2025.
-  * The project will be discussed onsite in the faculty.
-  * Submission Date: Final Exam Day (TBD). Each team will have an announced delivery time that will be public on our Google's classroom.
+4. **Radix Sort** - Distributed version of Radix Sort with parallelized counting and distribution phases
+   - [Documentation](docs/Radix_Sort.md)
 
-## Marking and Assessment
+5. **Sample Sort** - Implementation using MPI collective communication to gather and redistribute data efficiently
+   - [Documentation](docs/Sample_Sort.md)
 
-This assignment will be marked out of 120%. 20% of the grade is an extra credit grade (Bonus).
+## Documentation
 
-## Learning Outcomes
+Each algorithm is thoroughly documented in its respective markdown file under the `docs/` directory. The documentation includes:
 
-  * Understanding of Parallel Programming Concepts
-  * MPI Programming Skills
-  * Problem Decomposition and Parallelization
-  * Data Distribution and Communication
-  * Performance Optimization
-  * Teamwork and Collaboration
+- **Core Functions Explanation**: Detailed breakdowns of each function's purpose and implementation
+- **Main Wrapper Functions**: How the algorithms interface with the testing framework
+- **Key MPI Functions**: Detailed explanations of the MPI primitives used
+- **Step-by-Step Examples**: Tracing through algorithm execution with sample data
+- **Performance Considerations**: Analysis of efficiency and optimization opportunities
 
-## Details
+## Performance Analysis
 
-### Problem Distribution and Input Handling
+The project includes comprehensive performance analysis:
 
-The master process is responsible for reading the input data (e.g., array, dataset, or number range) and distributing the necessary portions to worker processes. Students should design their programs to support dynamic input sizes and flexible process partitioning.
+- **Execution Time by Input Size**: See `performance_summary.md` for detailed measurements
+- **Core Scaling Analysis**: How each algorithm scales with increasing processor cores
+- **Visualization**: Charts and graphs generated using `visualization.py`
 
-### Parallel Algorithms to Implement (Choose 4 - The 5th one is a bonus)
+The performance analysis demonstrates the speedup and efficiency of each algorithm using different numbers of MPI processes and data sizes, with particular attention to communication overheads and scalability.
 
-  * Quick Search: Implement a parallel search algorithm using divide-and-conquer, where each process searches a subset of the data.
-  * Prime Number Finding: Use parallel techniques to find all prime numbers within a specified range.
-  * Bitonic Sort: Implement the Bitonic sorting algorithm and parallelize its compare-and-swap steps using MPI.
-  * Radix Sort: Develop a distributed version of Radix Sort where counting and distribution phases are parallelized.
-  * Sample Sort: Implement Sample Sort using MPI collective communication to gather and redistribute data efficiently.
-  * Algorithm Visualization is required to be presented.
+## Running the Code
 
-#### Team tasks 
+For a single algorithm test:
 
-* Moaz: Prime Number Finding
-* Eng Mariam: Sample Sort
-* Hussein: Bitonic Sort
-* Farah: Quick Search
-* Basma: Radix Sort
+```bash
+./run.sh
+```
 
-### Performance Analysis
+Follow the prompts to select which algorithm to run.
 
-  * Students must measure the speedup and efficiency of each algorithm using different numbers of MPI processes and data sizes.
-  * Comparison with sequential versions (optional but recommended for deeper insight).
-  * Analyze communication overheads and scalability.
-  * Running in a cluster of $N \> 2$ (Two machines or more).
+## Team Contributors
 
-### Submission Files
+- **Moaz**: Prime Number Finding
+- **Mariam**: Sample Sort
+- **Hussein**: Bitonic Sort
+- **Farah**: Quick Search
+- **Basma**: Radix Sort
 
-  * Source code
-  * Documentation detailing the design, implementation, and performance analysis of Parallel Search and Sorting Algorithms with MPI
-  * Presentation or demonstration showcasing the project functionality, performance results, and any additional features implemented
+## Project Information
 
-**Important Notes:**
+This project was developed as part of the Parallel Computing course. The implementation demonstrates:
 
-  * IT IS YOUR RESPONSIBILITY TO KEEP RECORDS OF ALL THE WORK SUBMITTED.
-  * COPYING FROM EACH OTHER ISN'T ALLOWED.
+- Efficient problem decomposition and parallelization
+- Optimized data distribution and communication patterns
+- Performance analysis and optimization techniques
+- Distributed computing using MPI across multiple nodes
+
+## References and Resources
+
+- MPI documentation and best practices
+- Parallel algorithm design patterns
+- Performance optimization techniques for distributed systems
+
+---
+
+**Note**: For detailed information about a specific algorithm, please refer to its documentation file in the `docs/` directory.
