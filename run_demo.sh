@@ -66,14 +66,12 @@ run_algorithm() {
     fi
     
     # Extract timing info
-    real_time=$(grep "real" $RESULTS_DIR/time_output.txt | awk '{print $2}')
     user_time=$(grep "user" $RESULTS_DIR/time_output.txt | awk '{print $2}')
     sys_time=$(grep "sys" $RESULTS_DIR/time_output.txt | awk '{print $2}')
     
     # Copy output to result file
     echo "Algorithm: $(case $algo_num in 1) echo "Quick Search";; 2) echo "Prime Number Search";; 3) echo "Bitonic Sort";; 4) echo "Radix Sort";; 5) echo "Sample Sort";; esac)" > $result_file
     echo "Input Size: $(wc -w < $input_file)" >> $result_file
-    echo "Real Time: $real_time" >> $result_file
     echo "User Time: $user_time" >> $result_file
     echo "System Time: $sys_time" >> $result_file
     echo "=======================================" >> $result_file
@@ -109,7 +107,6 @@ run_algorithm_with_cores() {
     fi
     
     # Extract timing info
-    real_time=$(grep "real" $RESULTS_DIR/time_output.txt | awk '{print $2}')
     user_time=$(grep "user" $RESULTS_DIR/time_output.txt | awk '{print $2}')
     sys_time=$(grep "sys" $RESULTS_DIR/time_output.txt | awk '{print $2}')
     
@@ -117,7 +114,6 @@ run_algorithm_with_cores() {
     echo "Algorithm: $(case $algo_num in 1) echo "Quick Search";; 2) echo "Prime Number Search";; 3) echo "Bitonic Sort";; 4) echo "Radix Sort";; 5) echo "Sample Sort";; esac)" > $result_file
     echo "Cores: $cores" >> $result_file
     echo "Input Size: $(wc -w < $input_file)" >> $result_file
-    echo "Real Time: $real_time" >> $result_file
     echo "User Time: $user_time" >> $result_file
     echo "System Time: $sys_time" >> $result_file
     echo "=======================================" >> $result_file
@@ -174,7 +170,6 @@ EOF
     echo "Algorithm: $(case $algo_num in 1) echo "Quick Search";; 2) echo "Prime Number Search";; 3) echo "Bitonic Sort";; 4) echo "Radix Sort";; 5) echo "Sample Sort";; esac)" > $result_file
     echo "Cores: $cores" >> $result_file
     echo "Input Size: $(wc -w < $input_file)" >> $result_file
-    echo "Real Time: ${real_time}s" >> $result_file
     echo "User Time (Max): ${max_user_time}s" >> $result_file
     echo "System Time: ${sys_time}s" >> $result_file
     echo "=======================================" >> $result_file
@@ -278,8 +273,8 @@ generate_analysis() {
     echo "" >> $output_file
     
     # Create proper markdown table
-    echo "| Input Size | Real Time (ms) | User Time (ms) | System Time (ms) |" >> $output_file
-    echo "|------------|----------------|----------------|------------------|" >> $output_file
+    echo "| Input Size | User Time (ms) | System Time (ms) |" >> $output_file
+    echo "|------------|----------------|------------------|" >> $output_file
     
     # Function to convert time to milliseconds
     convert_to_ms() {
@@ -293,61 +288,53 @@ generate_analysis() {
     # Extract small size results
     if [ -f "$RESULTS_DIR/algo_$algo_num/small_result.txt" ]; then
         input_size=$(grep "Input Size:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $3}')
-        real_time=$(grep "Real Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $3}')
         user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $3}')
         sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $3}')
         
         # Convert times to milliseconds
-        real_time_ms=$(convert_to_ms "$real_time")
         user_time_ms=$(convert_to_ms "$user_time")
         sys_time_ms=$(convert_to_ms "$sys_time")
         
-        echo "| $input_size | $real_time_ms | $user_time_ms | $sys_time_ms |" >> $output_file
+        echo "| $input_size | $user_time_ms | $sys_time_ms |" >> $output_file
     fi
     
     # Extract medium size results
     if [ -f "$RESULTS_DIR/algo_$algo_num/medium_result.txt" ]; then
         input_size=$(grep "Input Size:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $3}')
-        real_time=$(grep "Real Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $3}')
         user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $3}')
         sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $3}')
         
         # Convert times to milliseconds
-        real_time_ms=$(convert_to_ms "$real_time")
         user_time_ms=$(convert_to_ms "$user_time")
         sys_time_ms=$(convert_to_ms "$sys_time")
         
-        echo "| $input_size | $real_time_ms | $user_time_ms | $sys_time_ms |" >> $output_file
+        echo "| $input_size | $user_time_ms | $sys_time_ms |" >> $output_file
     fi
     
     # Extract large size results
     if [ -f "$RESULTS_DIR/algo_$algo_num/large_result.txt" ]; then
         input_size=$(grep "Input Size:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $3}')
-        real_time=$(grep "Real Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $3}')
         user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $3}')
         sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $3}')
         
         # Convert times to milliseconds
-        real_time_ms=$(convert_to_ms "$real_time")
         user_time_ms=$(convert_to_ms "$user_time")
         sys_time_ms=$(convert_to_ms "$sys_time")
         
-        echo "| $input_size | $real_time_ms | $user_time_ms | $sys_time_ms |" >> $output_file
+        echo "| $input_size | $user_time_ms | $sys_time_ms |" >> $output_file
     fi
     
     # Extract very large size results
     if [ -f "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" ]; then
         input_size=$(grep "Input Size:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
-        real_time=$(grep "Real Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
         user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
         sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
         
         # Convert times to milliseconds
-        real_time_ms=$(convert_to_ms "$real_time")
         user_time_ms=$(convert_to_ms "$user_time")
         sys_time_ms=$(convert_to_ms "$sys_time")
         
-        echo "| $input_size | $real_time_ms | $user_time_ms | $sys_time_ms |" >> $output_file
+        echo "| $input_size | $user_time_ms | $sys_time_ms |" >> $output_file
     fi
     
     echo "" >> $output_file
@@ -393,8 +380,8 @@ generate_scaling_analysis() {
     echo "" >> $output_file
     
     # Create proper markdown table
-    echo "| Number of Cores | Real Time (ms) | Max User Time (ms) | System Time (ms) | Speedup |" >> $output_file
-    echo "|-----------------|----------------|-------------------|------------------|---------|" >> $output_file
+    echo "| Number of Cores | Max User Time (ms) | System Time (ms) | Speedup |" >> $output_file
+    echo "|-----------------|-------------------|------------------|---------|" >> $output_file
     
     # Function to convert time to milliseconds
     convert_to_ms() {
@@ -413,41 +400,38 @@ generate_scaling_analysis() {
         fi
     }
     
-    local base_time_ms=""
+    local base_user_time_ms=""
     
     # Process results for each core count
     for cores in 1 2 4 8; do
         if [ -f "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" ]; then
             # Check if we're using the new format with "User Time (Max)" or old format
             if grep -q "User Time (Max):" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt"; then
-                real_time=$(grep "Real Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
                 user_time=$(grep "User Time (Max):" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $4}')
                 sys_time=$(grep "System Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
             else
-                real_time=$(grep "Real Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
                 user_time=$(grep "User Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
                 sys_time=$(grep "System Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
             fi
             
             # Convert times to milliseconds
-            real_time_ms=$(convert_to_ms "$real_time")
             user_time_ms=$(convert_to_ms "$user_time")
             sys_time_ms=$(convert_to_ms "$sys_time")
             
-            # Calculate speedup
+            # Calculate speedup based on user time
             if [ $cores -eq 1 ]; then
-                base_time_ms=$real_time_ms
+                base_user_time_ms=$user_time_ms
                 speedup="1.00"
             else
                 # Avoid division by zero
-                if (( $base_time_ms > 0 )); then
-                    speedup=$(echo "scale=2; $base_time_ms / $real_time_ms" | bc -l)
+                if (( $base_user_time_ms > 0 )); then
+                    speedup=$(echo "scale=2; $base_user_time_ms / $user_time_ms" | bc -l)
                 else
                     speedup="N/A"
                 fi
             fi
             
-            echo "| $cores | $real_time_ms | $user_time_ms | $sys_time_ms | $speedup |" >> $output_file
+            echo "| $cores | $user_time_ms | $sys_time_ms | $speedup |" >> $output_file
         fi
     done
     
@@ -466,6 +450,8 @@ generate_scaling_analysis() {
     echo "### Note on User Time" >> $output_file
     echo "" >> $output_file
     echo "The 'Max User Time' column represents the estimated maximum CPU time used by any single core, rather than the sum of all cores. This gives a more accurate representation of actual processor utilization per core." >> $output_file
+    echo "" >> $output_file
+    echo "Speedup is calculated by dividing the single-core user time by the multi-core user time, showing how much faster the algorithm runs with more cores." >> $output_file
     echo "" >> $output_file
 }
 
