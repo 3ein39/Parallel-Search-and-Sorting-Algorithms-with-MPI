@@ -4,27 +4,8 @@
 #include <algorithm>
 #include <mpi.h>
 #include <sstream>
-#include <cmath>
 
 using namespace std;
-
-// Partition function for Quick Search within a process
-int partition(vector<int>& arr, int low, int high) {
-    if (low >= high) return low;
-
-    int pivot = arr[high];  // Choose the last element as pivot
-    int i = low - 1;  // Index of smaller element
-
-    for (int j = low; j < high; j++) {
-        // If current element is smaller than or equal to pivot
-        if (arr[j] <= pivot) {
-            i++;  // Increment index of smaller element
-            swap(arr[i], arr[j]);
-        }
-    }
-    swap(arr[i + 1], arr[high]);
-    return i + 1;
-}
 
 class ParallelQuickSearch {
 private:
@@ -34,52 +15,75 @@ private:
     int num_processes;
     MPI_Comm comm;
 
-    // Recursive quick search within a process
-    void quickSearchRecursive(vector<int>& arr, int low, int high) {
+    // Partition function for quicksort
+    int partition(vector<int>& arr, int low, int high) {
+        if (low >= high) return low;
+
+        int pivot = arr[high];  // Choose the last element as pivot
+        int i = low - 1;  // Index of smaller element
+
+        for (int j = low; j < high; j++) {
+            if (arr[j] <= pivot) {
+                i++;
+                swap(arr[i], arr[j]);
+            }
+        }
+        swap(arr[i + 1], arr[high]);
+        return i + 1;
+    }
+
+    // Recursive quicksort to sort local dataset
+    void quickSort(vector<int>& arr, int low, int high) {
         if (low < high) {
             int pivot_index = partition(arr, low, high);
-            quickSearchRecursive(arr, low, pivot_index - 1);
-            quickSearchRecursive(arr, pivot_index + 1, high);
+            quickSort(arr, low, pivot_index - 1);
+            quickSort(arr, pivot_index + 1, high);
         }
     }
 
-    // Explicit data partitioning strategy
+    // Binary search to find the target in the sorted local dataset
+    int binarySearch(const vector<int>& arr, int target) {
+        int left = 0, right = arr.size() - 1;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (arr[mid] == target) {
+                return mid;  // Found the target
+            } else if (arr[mid] < target) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+        return -1;  // Target not found
+    }
+
+    // Explicit data partitioning strategy using MPI_Scatterv
     void partitionDataAcrossProcesses() {
-        // Total number of elements
         int total_elements = global_dataset.size();
-        
-        // Calculate basic partition size
         int base_partition_size = total_elements / num_processes;
         int remainder = total_elements % num_processes;
 
-        // Calculate start and end indices for this process
-        int start_index, end_index, partition_size;
+        // Calculate send counts and displacements for MPI_Scatterv
+        vector<int> send_counts(num_processes);
+        vector<int> displacements(num_processes);
+        int start_index = 0;
 
-        if (rank < remainder) {
-            // First 'remainder' processes get one extra element
-            partition_size = base_partition_size + 1;
-            start_index = rank * partition_size;
-        } else {
-            // Remaining processes get base partition size
-            partition_size = base_partition_size;
-            start_index = remainder * (partition_size + 1) + 
-                          (rank - remainder) * partition_size;
+        for (int p = 0; p < num_processes; ++p) {
+            send_counts[p] = (p < remainder) ? (base_partition_size + 1) : base_partition_size;
+            displacements[p] = start_index;
+            start_index += send_counts[p];
         }
 
-        // Determine end index
-        end_index = start_index + partition_size;
+        // Resize local dataset
+        local_dataset.resize(send_counts[rank]);
 
-        // Extract local dataset for this process
-        local_dataset.clear();
-        local_dataset.insert(
-            local_dataset.begin(), 
-            global_dataset.begin() + start_index, 
-            global_dataset.begin() + end_index
-        );
+        // Scatter the dataset to processes
+        MPI_Scatterv(global_dataset.data(), send_counts.data(), displacements.data(), MPI_INT,
+                     local_dataset.data(), send_counts[rank], MPI_INT, 0, comm);
 
-        // Perform local recursive quick search
+        // Sort the local dataset
         if (!local_dataset.empty()) {
-            quickSearchRecursive(local_dataset, 0, local_dataset.size() - 1);
+            quickSort(local_dataset, 0, local_dataset.size() - 1);
         }
     }
 
@@ -108,19 +112,20 @@ private:
 
     // Search for target in local dataset
     int searchLocalDataset(int target) {
-        for (size_t i = 0; i < local_dataset.size(); ++i) {
-            if (local_dataset[i] == target) {
-                // Calculate global index
-                int base_index = 0;
-                for (int p = 0; p < rank; ++p) {
-                    base_index += (p < (global_dataset.size() % num_processes)) ? 
-                        (global_dataset.size() / num_processes + 1) : 
-                        (global_dataset.size() / num_processes);
-                }
-                return base_index + i;
-            }
+        if (local_dataset.empty()) return -1;
+
+        // Use binary search to find the target
+        int local_index = binarySearch(local_dataset, target);
+        if (local_index == -1) return -1;
+
+        // Calculate global index
+        int base_index = 0;
+        for (int p = 0; p < rank; ++p) {
+            base_index += (p < (global_dataset.size() % num_processes)) ?
+                (global_dataset.size() / num_processes + 1) :
+                (global_dataset.size() / num_processes);
         }
-        return -1;
+        return base_index + local_index;
     }
 
 public:
@@ -148,9 +153,6 @@ public:
             global_dataset.resize(total_size);
         }
 
-        // Broadcast entire dataset
-        MPI_Bcast(global_dataset.data(), total_size, MPI_INT, 0, comm);
-
         // Partition data across processes
         partitionDataAcrossProcesses();
 
@@ -165,7 +167,7 @@ public:
     }
 };
 
-// Wrapper function to call the QuickSearch from source.cpp
+// Wrapper function to call the QuickSearch
 bool runQuickSearch(const char* inputFile, const char* outputFile, int target, int rank, int size, MPI_Comm comm) {
     // Start timing
     MPI_Barrier(comm);
