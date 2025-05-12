@@ -1,11 +1,11 @@
 Algorithm: Quick Search
 Input Size: 10000
-Iterations: 2
-Average User Time: .175s
-Average System Time: .241s
+Iterations: 5
+Average User Time: .167s
+Average System Time: .442s
 =======================================
 Quick Search Results:
-Target 78 found at position 7509
-Execution time: 0.94845 ms
+Target 7861 found at position 9753
+Execution time: 0.950673 ms
 
 =======================================

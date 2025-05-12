@@ -9,7 +9,7 @@ Parallel Algorithms with MPI
 4. Radix Sort
 5. Sample Sort
 Enter choice: Running Sample Sort...
-Sample Sort execution time: 0.0162446 s
+Sample Sort execution time: 0.0176367 s
 Algorithm completed successfully!
 Results written to out.txt
 

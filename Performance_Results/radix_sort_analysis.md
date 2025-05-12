@@ -1,7 +1,7 @@
 # Radix Sort Performance Analysis
 
 ## Test Configuration
-- Date: Mon May 12 10:07:12 PM EEST 2025
+- Date: Mon May 12 10:32:58 PM EEST 2025
 - Number of processes: 8
 - Each test averaged over 5 iterations
 
@@ -9,10 +9,10 @@
 
 | Input Size | User Time (ms) | System Time (ms) |
 |------------|----------------|------------------|
-| 1024 | 165 | 206 |
-| 4096 | 179 | 230 |
-| 16384 | 219 | 229 |
-| 65536 | 373 | 204 |
+| 1024 | 166 | 346 |
+| 4096 | 171 | 482 |
+| 16384 | 185 | 485 |
+| 65536 | 252 | 368 |
 
 ## Performance Analysis
 

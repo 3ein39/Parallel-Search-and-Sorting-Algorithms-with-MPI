@@ -1,7 +1,7 @@
 # Radix Sort Core Scaling Analysis
 
 ## Test Configuration
-- Date: Mon May 12 10:07:48 PM EEST 2025
+- Date: Mon May 12 10:34:30 PM EEST 2025
 - Fixed input size (very large)
 - Each test averaged over 5 iterations
 
@@ -9,10 +9,10 @@
 
 | Number of Cores | Max User Time (ms) | System Time (ms) | Speedup |
 |-----------------|-------------------|------------------|---------|
-| 1 | 47 | 42 | 1.00 |
-| 2 | 54 | 55 | .87 |
-| 4 | 43 | 117 | 1.09 |
-| 8 | 48 | 376 | .97 |
+| 1 | 42 | 48 | 1.00 |
+| 2 | 33 | 59 | 1.27 |
+| 4 | 29 | 129 | 1.44 |
+| 8 | 31 | 392 | 1.35 |
 
 ## Scaling Analysis
 

@@ -1,7 +1,7 @@
 # Sample Sort Core Scaling Analysis
 
 ## Test Configuration
-- Date: Mon May 12 10:07:48 PM EEST 2025
+- Date: Mon May 12 10:34:30 PM EEST 2025
 - Fixed input size (very large)
 - Each test averaged over 5 iterations
 
@@ -9,10 +9,10 @@
 
 | Number of Cores | Max User Time (ms) | System Time (ms) | Speedup |
 |-----------------|-------------------|------------------|---------|
-| 1 | 3654 | 52 | 1.00 |
-| 2 | 501 | 61 | 7.29 |
-| 4 | 110 | 151 | 33.21 |
-| 8 | 45 | 411 | 81.20 |
+| 1 | 3845 | 55 | 1.00 |
+| 2 | 519 | 65 | 7.40 |
+| 4 | 126 | 172 | 30.51 |
+| 8 | 50 | 329 | 76.90 |
 
 ## Scaling Analysis
 

@@ -1,8 +1,8 @@
 Algorithm: Prime Number Search
 Input Size: 2
-Iterations: 2
-Average User Time: .419s
-Average System Time: .244s
+Iterations: 5
+Average User Time: .420s
+Average System Time: .334s
 =======================================
 Prime Number Search Results:
 Found 78498 primes between 2 and 1000000

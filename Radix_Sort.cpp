@@ -1,237 +1,210 @@
-#include <iostream>
+#include <mpi.h>
 #include <vector>
 #include <fstream>
-#include <mpi.h>
-#include <cmath>
+#include <iostream>
 #include <algorithm>
-#include <climits>
 
-using namespace std;
+const int BASE = 10; // Using base-10 for radix sort
 
-// Function to find the maximum element in an array
-int getMax(const vector<int>& arr) {
-    return *max_element(arr.begin(), arr.end());
+// Get the largest value in the array
+int get_largest(const std::vector<int>& numbers) {
+    if (numbers.empty()) return 0;
+    return *std::max_element(numbers.begin(), numbers.end());
 }
 
-// A utility function to do counting sort based on a specific digit position
-void countingSortByDigit(vector<int>& arr, int exp) {
-    int n = arr.size();
-    vector<int> output(n, 0);
-    vector<int> count(10, 0);  // Count array for digits 0-9
-    
-    // Store count of occurrences of current digit
-    for (int i = 0; i < n; i++) {
-        count[(arr[i] / exp) % 10]++;
+// Calculate number of digits in a number
+int digit_count(int value) {
+    if (value == 0) return 1;
+    int digits = 0;
+    while (value > 0) {
+        value /= 10;
+        digits++;
     }
-    
-    // Change count[i] so that it contains the actual
-    // position of this digit in output[]
-    for (int i = 1; i < 10; i++) {
-        count[i] += count[i - 1];
-    }
-    
-    // Build the output array
-    for (int i = n - 1; i >= 0; i--) {
-        output[count[(arr[i] / exp) % 10] - 1] = arr[i];
-        count[(arr[i] / exp) % 10]--;
-    }
-    
-    // Copy the output array to arr[]
-    for (int i = 0; i < n; i++) {
-        arr[i] = output[i];
-    }
+    return digits;
 }
 
-// Function to perform radix sort on a local array
-void radixSortLocal(vector<int>& arr) {
-    // Handle empty arrays gracefully
-    if (arr.empty()) return;
-    
-    // Find the maximum number to know the number of digits
-    int max_val = getMax(arr);
-    
-    // Do counting sort for every digit
-    for (int exp = 1; max_val / exp > 0; exp *= 10) {
-        countingSortByDigit(arr, exp);
+// Helper function to distribute numbers based on digit
+void distribute_by_digit(const std::vector<int>& input, int divisor, int size,
+                         std::vector<std::vector<int>>& buckets, std::vector<int>& counts) {
+    std::fill(counts.begin(), counts.end(), 0);
+    for (auto num : input) {
+        int digit = (num / divisor) % BASE;
+        int proc = (digit * size) / BASE;
+        if (proc >= size) proc = size - 1;
+        counts[proc]++;
+    }
+
+    for (int i = 0; i < size; ++i) {
+        buckets[i].reserve(counts[i]);
+    }
+
+    for (auto num : input) {
+        int digit = (num / divisor) % BASE;
+        int proc = (digit * size) / BASE;
+        if (proc >= size) proc = size - 1;
+        buckets[proc].push_back(num);
     }
 }
 
-// Simplified parallel radix sort without the overly complex redistribution
-void parallelRadixSort(vector<int>& local_data, int rank, int size, MPI_Comm comm) {
-    if (local_data.empty()) {
-        return;
-    }
-    
-    // Sort local data first
-    radixSortLocal(local_data);
-    
-    // Now gather all sorted data to rank 0
-    int local_size = local_data.size();
-    vector<int> sizes(size);
-    
-    // Exchange sizes
-    MPI_Allgather(&local_size, 1, MPI_INT, sizes.data(), 1, MPI_INT, comm);
-    
-    // Calculate displacements
-    vector<int> displs(size, 0);
-    for (int i = 1; i < size; i++) {
-        displs[i] = displs[i-1] + sizes[i-1];
-    }
-    
-    // Calculate total size
-    int total_size = 0;
-    for (int i = 0; i < size; i++) {
-        total_size += sizes[i];
-    }
-    
-    // Gather all data to all processes
-    vector<int> all_data(total_size);
-    MPI_Allgatherv(local_data.data(), local_size, MPI_INT,
-                  all_data.data(), sizes.data(), displs.data(), MPI_INT, comm);
-    
-    // Sort the gathered data (this is a sequential operation but done by all processes)
-    sort(all_data.begin(), all_data.end());
-    
-    // Redistribute the sorted data back to processes
-    int elements_per_proc = total_size / size;
-    int remainder = total_size % size;
-    
-    // Calculate how many elements this process should have
-    int my_elements = elements_per_proc + (rank < remainder ? 1 : 0);
-    int my_start = rank * elements_per_proc + min(rank, remainder);
-    
-    // Copy my portion of the sorted data
-    local_data.resize(my_elements);
-    for (int i = 0; i < my_elements; i++) {
-        local_data[i] = all_data[my_start + i];
-    }
-}
-
-// Wrapper function to handle data distribution, sorting, and collection
+// Wrapper function to be called from source.cpp
 bool runRadixSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm) {
-    vector<int> global_array;
+    std::vector<int> input_array;
     int array_size = 0;
-    bool is_error = false;
-    
-    // Root process reads the input file
+
+    // Process 0 reads input from file
     if (rank == 0) {
-        ifstream file(inputFile);
-        if (!file.is_open()) {
-            cout << "Error: Unable to open input file " << inputFile << endl;
-            is_error = true;
-        } else {
-            int num;
-            while (file >> num) {
-                global_array.push_back(num);
-            }
-            file.close();
-            
-            array_size = global_array.size();
-            
-            if (array_size <= 0) {
-                cout << "Error: Input array is empty" << endl;
-                is_error = true;
-            } else {
-                // Print the unsorted array
-                
-                // Also write to output file
-                ofstream outFile(outputFile);
-                outFile << "Unsorted array: ";
-                for (int i = 0; i < array_size; i++) {
-                    outFile << global_array[i] << " ";
-                }
-                outFile << endl;
-                outFile.close();
-            }
+        std::ifstream input_file(inputFile);
+        if (!input_file.is_open()) {
+            std::cerr << "Error: Unable to open " << inputFile << std::endl;
+            return false;
         }
+
+        int value;
+        while (input_file >> value) {
+            input_array.push_back(value);
+        }
+        array_size = input_array.size();
+        input_file.close();
     }
-    
-    // Broadcast error status
-    MPI_Bcast(&is_error, 1, MPI_C_BOOL, 0, comm);
-    
-    if (is_error) {
-        return false;
-    }
-    
-    // Broadcast array size
+
+    // Share array size with all processes
     MPI_Bcast(&array_size, 1, MPI_INT, 0, comm);
-    
-    // Calculate local array size and offset
-    int local_size = array_size / size;
-    int remainder = array_size % size;
-    int my_local_size = local_size + (rank < remainder ? 1 : 0);
-    int my_offset = rank * local_size + min(rank, remainder);
-    
-    // Allocate local array
-    vector<int> local_array(my_local_size);
-    
-    // Root process distributes data
+
+    // Calculate size of each process's partition
+    int partition_size = array_size / size + (rank < array_size % size ? 1 : 0);
+    std::vector<int> partition(partition_size);
+
+    // Prepare for scattering data
+    std::vector<int> counts_to_send(size), offsets(size);
     if (rank == 0) {
-        // Copy data for rank 0
-        for (int i = 0; i < my_local_size; i++) {
-            local_array[i] = global_array[i];
+        int offset = 0;
+        for (int i = 0; i < size; ++i) {
+            counts_to_send[i] = array_size / size + (i < array_size % size ? 1 : 0);
+            offsets[i] = offset;
+            offset += counts_to_send[i];
         }
-        
-        // Send data to other processes
-        int current_offset = my_local_size;
-        for (int i = 1; i < size; i++) {
-            int proc_local_size = local_size + (i < remainder ? 1 : 0);
-            MPI_Send(&global_array[current_offset], proc_local_size, MPI_INT, i, 0, comm);
-            current_offset += proc_local_size;
+    }
+
+    // Distribute input data to processes
+    MPI_Scatterv(input_array.data(), counts_to_send.data(), offsets.data(), MPI_INT,
+                 partition.data(), partition_size, MPI_INT, 0, comm);
+
+    // Determine global maximum
+    int local_max = get_largest(partition);
+    int global_max;
+    MPI_Allreduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, comm);
+    int max_digits = digit_count(global_max);
+
+    std::vector<int> counts_to_send_proc(size);
+    std::vector<int> counts_to_recv(size);
+
+    // Process each digit
+    for (int digit_pos = 0; digit_pos < max_digits; ++digit_pos) {
+        int divisor = 1;
+        for (int i = 0; i < digit_pos; ++i) divisor *= 10;
+
+        // Distribute numbers to buckets
+        std::vector<std::vector<int>> buckets(size);
+        distribute_by_digit(partition, divisor, size, buckets, counts_to_send_proc);
+
+        // Share send counts
+        MPI_Alltoall(counts_to_send_proc.data(), 1, MPI_INT, counts_to_recv.data(), 1, MPI_INT, comm);
+
+        // Calculate displacements
+        std::vector<int> send_offsets(size), recv_offsets(size);
+        send_offsets[0] = recv_offsets[0] = 0;
+        for (int i = 1; i < size; ++i) {
+            send_offsets[i] = send_offsets[i - 1] + counts_to_send_proc[i - 1];
+            recv_offsets[i] = recv_offsets[i - 1] + counts_to_recv[i - 1];
         }
-    } else {
-        // Receive local chunk from root process
-        MPI_Recv(local_array.data(), my_local_size, MPI_INT, 0, 0, comm, MPI_STATUS_IGNORE);
+
+        // Prepare send buffer
+        int total_to_send = send_offsets[size - 1] + counts_to_send_proc[size - 1];
+        std::vector<int> send_data(total_to_send);
+        int pos = 0;
+        for (int i = 0; i < size; ++i) {
+            std::copy(buckets[i].begin(), buckets[i].end(), send_data.begin() + pos);
+            pos += buckets[i].size();
+        }
+
+        // Update partition size
+        partition_size = recv_offsets[size - 1] + counts_to_recv[size - 1];
+        std::vector<int> recv_data(partition_size);
+
+        // Exchange data between processes
+        MPI_Alltoallv(send_data.data(), counts_to_send_proc.data(), send_offsets.data(), MPI_INT,
+                      recv_data.data(), counts_to_recv.data(), recv_offsets.data(), MPI_INT,
+                      comm);
+
+        partition = std::move(recv_data);
+
+        // Perform local counting sort if needed
+        if (size < BASE) {
+            std::vector<int> digit_counts(BASE, 0);
+            std::vector<int> sorted(partition_size);
+            for (auto num : partition) {
+                int digit = (num / divisor) % BASE;
+                digit_counts[digit]++;
+            }
+            for (int i = 1; i < BASE; ++i) {
+                digit_counts[i] += digit_counts[i - 1];
+            }
+            for (int i = partition_size - 1; i >= 0; --i) {
+                int digit = (partition[i] / divisor) % BASE;
+                sorted[--digit_counts[digit]] = partition[i];
+            }
+            partition = std::move(sorted);
+        }
     }
-    
-    // Start timing
-    MPI_Barrier(comm);
-    double start_time = MPI_Wtime();
-    
-    // Perform parallel radix sort
-    parallelRadixSort(local_array, rank, size, comm);
-    
-    // End timing
-    double end_time = MPI_Wtime();
-    MPI_Barrier(comm);
-    
-    // Calculate timing statistics
-    double local_time = end_time - start_time;
-    double max_time = 0.0;
-    MPI_Reduce(&local_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
-    
-    // Gather all data back to root
-    vector<int> recv_counts(size);
-    vector<int> displs(size);
-    
-    for (int i = 0; i < size; i++) {
-        recv_counts[i] = local_size + (i < remainder ? 1 : 0);
-        displs[i] = i * local_size + min(i, remainder);
+
+    // Gather partition sizes
+    std::vector<int> final_counts(size);
+    MPI_Allgather(&partition_size, 1, MPI_INT, final_counts.data(), 1, MPI_INT, comm);
+
+    std::vector<int> final_offsets(size);
+    final_offsets[0] = 0;
+    for (int i = 1; i < size; ++i) {
+        final_offsets[i] = final_offsets[i - 1] + final_counts[i - 1];
     }
-    
-    // Resize global array on root process
+
+    // Collect final sorted array
     if (rank == 0) {
-        global_array.resize(array_size);
+        input_array.resize(array_size);
     }
-    
-    // Gather sorted data
-    MPI_Gatherv(local_array.data(), my_local_size, MPI_INT,
-               global_array.data(), recv_counts.data(), displs.data(),
-               MPI_INT, 0, comm);
-    
-    // Root writes results to file
+
+    MPI_Gatherv(partition.data(), partition_size, MPI_INT, input_array.data(), final_counts.data(),
+                final_offsets.data(), MPI_INT, 0, comm);
+
+    // Write sorted array to output file
     if (rank == 0) {
-        // Write sorted array to the output file
-        ofstream outFile(outputFile, ios::app);
-        outFile << "Sorted array: ";
-        for (int i = 0; i < array_size; i++) {
-            outFile << global_array[i] << " ";
+        std::ofstream output_file(outputFile);
+        if (!output_file.is_open()) {
+            std::cerr << "Error: Unable to open " << outputFile << std::endl;
+            return false;
+        } else {
+            for (auto num : input_array) {
+                output_file << num << " ";
+            }
+            output_file << std::endl;
+            output_file.close();
         }
-        outFile << endl;
-        
-        
-        cout << "Radix Sort execution time: " << max_time * 1000 << " ms" << endl;
     }
-    
+
     return true;
 }
+
+// Keeping the main function for standalone testing
+#ifdef RADIX_SORT_MAIN
+int main(int argc, char* argv[]) {
+    MPI_Init(&argc, &argv);
+
+    int proc_id, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &proc_id);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    bool success = runRadixSort("in.txt", "out.txt", proc_id, num_procs, MPI_COMM_WORLD);
+
+    MPI_Finalize();
+    return success ? 0 : 1;
+}
+#endif

@@ -1,7 +1,7 @@
 # Prime Number Search Core Scaling Analysis
 
 ## Test Configuration
-- Date: Mon May 12 10:07:48 PM EEST 2025
+- Date: Mon May 12 10:34:30 PM EEST 2025
 - Fixed input size (very large)
 - Each test averaged over 5 iterations
 
@@ -9,10 +9,10 @@
 
 | Number of Cores | Max User Time (ms) | System Time (ms) | Speedup |
 |-----------------|-------------------|------------------|---------|
-| 1 | 2542 | 50 | 1.00 |
-| 2 | 1624 | 58 | 1.56 |
-| 4 | 921 | 99 | 2.76 |
-| 8 | 922 | 255 | 2.75 |
+| 1 | 2567 | 49 | 1.00 |
+| 2 | 1651 | 69 | 1.55 |
+| 4 | 954 | 153 | 2.69 |
+| 8 | 865 | 388 | 2.96 |
 
 ## Scaling Analysis
 

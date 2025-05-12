@@ -1,7 +1,7 @@
 # Sample Sort Performance Analysis
 
 ## Test Configuration
-- Date: Mon May 12 10:07:12 PM EEST 2025
+- Date: Mon May 12 10:32:58 PM EEST 2025
 - Number of processes: 8
 - Each test averaged over 5 iterations
 
@@ -9,10 +9,10 @@
 
 | Input Size | User Time (ms) | System Time (ms) |
 |------------|----------------|------------------|
-| 1024 | 206 | 207 |
-| 4096 | 173 | 246 |
-| 16384 | 190 | 278 |
-| 65536 | 385 | 228 |
+| 1024 | 196 | 402 |
+| 4096 | 194 | 377 |
+| 16384 | 208 | 359 |
+| 65536 | 396 | 428 |
 
 ## Performance Analysis
 

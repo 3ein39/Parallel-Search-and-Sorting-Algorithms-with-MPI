@@ -1,7 +1,7 @@
 # Prime Number Search Performance Analysis
 
 ## Test Configuration
-- Date: Mon May 12 10:07:12 PM EEST 2025
+- Date: Mon May 12 10:32:58 PM EEST 2025
 - Number of processes: 8
 - Each test averaged over 5 iterations
 
@@ -9,10 +9,10 @@
 
 | Input Size | User Time (ms) | System Time (ms) |
 |------------|----------------|------------------|
-| 2 | 174 | 210 |
-| 2 | 181 | 257 |
-| 2 | 419 | 244 |
-| 2 | 6820 | 227 |
+| 2 | 171 | 375 |
+| 2 | 178 | 382 |
+| 2 | 420 | 334 |
+| 2 | 6765 | 420 |
 
 ## Performance Analysis
 

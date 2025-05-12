@@ -60,7 +60,7 @@ run_algorithm() {
     local sys_times=()
     
     # Number of iterations for averaging
-    local iterations=2
+    local iterations=5
     
     # Run the algorithm multiple times to get average performance
     for ((i=1; i<=$iterations; i++)); do
@@ -213,7 +213,7 @@ EOF
     local sys_times=()
     
     # Number of iterations for averaging
-    local iterations=2
+    local iterations=5
     
     # Run the algorithm multiple times to get average performance
     for ((i=1; i<=$iterations; i++)); do

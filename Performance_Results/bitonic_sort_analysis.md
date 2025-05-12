@@ -1,7 +1,7 @@
 # Bitonic Sort Performance Analysis
 
 ## Test Configuration
-- Date: Mon May 12 10:07:12 PM EEST 2025
+- Date: Mon May 12 10:32:58 PM EEST 2025
 - Number of processes: 8
 - Each test averaged over 5 iterations
 
@@ -9,10 +9,10 @@
 
 | Input Size | User Time (ms) | System Time (ms) |
 |------------|----------------|------------------|
-| 1024 | 181 | 236 |
-| 4096 | 335 | 278 |
-| 16384 | 212 | 246 |
-| 65536 | 238 | 226 |
+| 1024 | 212 | 251 |
+| 4096 | 189 | 258 |
+| 16384 | 241 | 270 |
+| 65536 | 224 | 339 |
 
 ## Performance Analysis
 

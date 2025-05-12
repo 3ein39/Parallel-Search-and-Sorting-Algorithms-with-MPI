@@ -1,7 +1,7 @@
 # Bitonic Sort Core Scaling Analysis
 
 ## Test Configuration
-- Date: Mon May 12 10:07:48 PM EEST 2025
+- Date: Mon May 12 10:34:30 PM EEST 2025
 - Fixed input size (very large)
 - Each test averaged over 5 iterations
 
@@ -9,10 +9,10 @@
 
 | Number of Cores | Max User Time (ms) | System Time (ms) | Speedup |
 |-----------------|-------------------|------------------|---------|
-| 1 | 43 | 44 | 1.00 |
-| 2 | 30 | 58 | 1.43 |
-| 4 | 26 | 116 | 1.65 |
-| 8 | 27 | 278 | 1.59 |
+| 1 | 40 | 50 | 1.00 |
+| 2 | 32 | 63 | 1.25 |
+| 4 | 27 | 127 | 1.48 |
+| 8 | 26 | 296 | 1.53 |
 
 ## Scaling Analysis
 

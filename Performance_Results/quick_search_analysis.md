@@ -1,7 +1,7 @@
 # Quick Search Performance Analysis
 
 ## Test Configuration
-- Date: Mon May 12 10:07:12 PM EEST 2025
+- Date: Mon May 12 10:32:58 PM EEST 2025
 - Number of processes: 8
 - Each test averaged over 5 iterations
 
@@ -9,10 +9,10 @@
 
 | Input Size | User Time (ms) | System Time (ms) |
 |------------|----------------|------------------|
-| 1000 | 163 | 191 |
-| 10000 | 175 | 241 |
-| 100000 | 240 | 235 |
-| 1000000 | 884 | 422 |
+| 1000 | 171 | 429 |
+| 10000 | 167 | 442 |
+| 100000 | 223 | 297 |
+| 1000000 | 905 | 407 |
 
 ## Performance Analysis
 
