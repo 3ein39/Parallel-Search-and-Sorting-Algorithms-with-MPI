@@ -25,6 +25,9 @@ vector<int> findPrimes(int start, int end)
 
 void parallelPrimeSearch(int start, int end)
 {
+    double start_time, end_time;
+    start_time = MPI_Wtime();
+
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -57,6 +60,10 @@ void parallelPrimeSearch(int start, int end)
 
     if (rank == 0)
     {
+        end_time = MPI_Wtime();
+
+        cout << "Execution time: " << (end_time - start_time) * 1000 << " ms\n";
+        
         FILE *out = fopen("out.txt", "w");
         fprintf(out, "Prime Number Search Results:\n");
         fprintf(out, "Found %d primes between %d and %d\n", total, start, end);

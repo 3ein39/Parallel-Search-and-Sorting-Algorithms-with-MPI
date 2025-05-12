@@ -8,6 +8,8 @@ using namespace std;
 extern void parallelPrimeSearch(int start, int end);
 extern void bitonicSortParallel(vector<int>& local_data, int local_n, int total_n, int rank, int size, MPI_Comm comm);
 extern bool runBitonicSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm);
+extern bool runSampleSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm);
+
 
 // Function to read array data for Sorting and searching algorithms
 vector<int> readArrayData(const char *filename)
@@ -41,7 +43,6 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    double start_time, end_time;
     char tryAnother = 'y';
 
     while (tryAnother == 'y' || tryAnother == 'Y')
@@ -74,7 +75,6 @@ int main(int argc, char **argv)
             break;
         }
 
-        start_time = MPI_Wtime();
 
         switch (choice)
         {
@@ -140,12 +140,15 @@ int main(int argc, char **argv)
 
         case 5:
         {
-            if (rank == 0)
-            {
+            if (rank == 0) {
                 cout << "Running Sample Sort...\n";
-                // Read array data from file using the function readArrayData
-                // Call sample sort function here
             }
+            
+            // Call the wrapper function that handles everything
+            bool success = runSampleSort("in.txt", "out.txt", rank, size, MPI_COMM_WORLD);
+            
+            // Set error flag if sorting failed
+            is_error = !success;
             break;
         }
 
@@ -157,13 +160,10 @@ int main(int argc, char **argv)
             break;
         }
 
-        // Record end time and calculate execution time
-        end_time = MPI_Wtime();
 
         if (rank == 0 && choice > 0 && choice <= 5 && !is_error)
         {
             cout << "Algorithm completed successfully!\n";
-            cout << "Execution time: " << (end_time - start_time) * 1000 << " ms\n";
             cout << "Results written to out.txt\n";
 
         }
