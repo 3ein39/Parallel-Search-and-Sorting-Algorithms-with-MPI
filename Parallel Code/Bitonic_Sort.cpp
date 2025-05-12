@@ -73,6 +73,126 @@ void bitonicSortParallel(vector<int>& local_data, int local_n, int total_n, int 
     }
 }
 
+// Wrapper function to handle data distribution, sorting, and collection
+bool runBitonicSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm) {
+    vector<int> global_array;
+    int n = 0;
+    bool is_error = false;
+    
+    // Root process reads the input file
+    if (rank == 0) {
+        ifstream file(inputFile);
+        int el;
+        while (file >> el) {
+            global_array.push_back(el);
+        }
+        file.close();
+        
+        n = global_array.size();
+        
+        // Check if array size is valid for bitonic sort
+        if (n % size != 0) {
+            cout << "Error: Array size is not divisible by number of processes.\n";
+            is_error = true;
+        }
+        
+        // Check if n is a power of 2
+        if (!is_error && (n & (n - 1)) != 0) {
+            cout << "Error: Array size is not a power of 2.\n";
+            is_error = true;
+        }
+        
+        // Print the unsorted array
+        if (!is_error) {
+            cout << "Unsorted array: ";
+            for (int i = 0; i < n; i++) {
+                cout << global_array[i] << " ";
+            }
+            cout << endl;
+            
+            // Also write to output file
+            ofstream outFile(outputFile);
+            outFile << "Unsorted array: ";
+            for (int i = 0; i < n; i++) {
+                outFile << global_array[i] << " ";
+            }
+            outFile << endl;
+            outFile.close();
+        }
+    }
+    
+    // Broadcast error status and array size
+    MPI_Bcast(&is_error, 1, MPI_C_BOOL, 0, comm);
+    
+    if (is_error) {
+        return false;
+    }
+    
+    // Broadcast the array size to all processes
+    MPI_Bcast(&n, 1, MPI_INT, 0, comm);
+    
+    // Calculate local array size
+    int local_n = n / size;
+    vector<int> local_array(local_n);
+    
+    if (rank == 0) {
+        // Distribute chunks to all processes
+        for (int i = 1; i < size; i++) {
+            MPI_Send(&global_array[i * local_n], local_n, MPI_INT, i, 0, comm);
+        }
+        
+        // Keep rank 0's local chunk
+        for (int i = 0; i < local_n; i++) {
+            local_array[i] = global_array[i];
+        }
+    } else {
+        // Receive local chunk
+        MPI_Recv(local_array.data(), local_n, MPI_INT, 0, 0, comm, MPI_STATUS_IGNORE);
+    }
+    
+    // Start timing
+    MPI_Barrier(comm);
+    double start_time = MPI_Wtime();
+    
+    // Perform parallel bitonic sort
+    bitonicSortParallel(local_array, local_n, n, rank, size, comm);
+    
+    // End timing
+    double end_time = MPI_Wtime();
+    MPI_Barrier(comm);
+    
+    // Gather sorted data back
+    if (rank == 0) {
+        // Copy rank 0's sorted chunk back to global array
+        for (int i = 0; i < local_n; i++) {
+            global_array[i] = local_array[i];
+        }
+        
+        // Receive sorted chunks from other processes
+        for (int i = 1; i < size; i++) {
+            MPI_Recv(&global_array[i * local_n], local_n, MPI_INT, i, 1, comm, MPI_STATUS_IGNORE);
+        }
+        
+        // Calculate and print execution time
+        double duration = (end_time - start_time) * 1000; // Convert to milliseconds
+        cout << "Bitonic Sort execution time: " << duration << " ms\n";
+        
+        // Write sorted array to output file
+        ofstream outFile(outputFile, ios::app);
+        outFile << "Sorted array: ";
+        for (int i = 0; i < n; i++) {
+            outFile << global_array[i] << " ";
+        }
+        outFile << endl;
+        outFile.close();
+    } else {
+        // Send sorted chunk back to root
+        MPI_Send(local_array.data(), local_n, MPI_INT, 0, 1, comm);
+    }
+    
+    return true;
+}
+
 // Original main function kept for reference, but commented out
 /*
 int main(int argc, char** argv) {
