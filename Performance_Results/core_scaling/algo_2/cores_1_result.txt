@@ -1,0 +1,11 @@
+Algorithm: Prime Number Search
+Cores: 1
+Input Size: 2
+Iterations: 2
+User Time (Max): 2.542s
+System Time: .050s
+=======================================
+Prime Number Search Results:
+Found 664579 primes between 2 and 10000000
+2 3 5 7 11 13 17 19 23 29 ... (and 664569 more)
+=======================================

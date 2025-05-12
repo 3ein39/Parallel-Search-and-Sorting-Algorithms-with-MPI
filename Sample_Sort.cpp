@@ -260,8 +260,8 @@ bool runSampleSort(const char* inputFile, const char* outputFile, int rank, int 
     // Write results to file
     if (rank == 0) {
         // Calculate execution time
-        double duration = (end_time - start_time) * 1000; // Convert to milliseconds
-        cout << "Sample Sort execution time: " << duration << " ms\n";
+        double duration = (end_time - start_time); 
+        cout << "Sample Sort execution time: " << duration << " s\n";
         
         
         // Write to output file

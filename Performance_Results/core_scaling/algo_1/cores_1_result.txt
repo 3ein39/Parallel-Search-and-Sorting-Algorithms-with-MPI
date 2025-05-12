@@ -1,0 +1,12 @@
+Algorithm: Quick Search
+Cores: 1
+Input Size: 1000000
+Iterations: 2
+User Time (Max): .487s
+System Time: .050s
+=======================================
+Quick Search Results:
+Target 29939 not found in dataset
+Execution time: 463.267 ms
+
+=======================================

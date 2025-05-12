@@ -1,0 +1,26 @@
+
+========================================
+Parallel Algorithms with MPI
+========================================
+0. Exit
+1. Quick Search
+2. Prime Number Search
+3. Bitonic Sort
+4. Radix Sort
+5. Sample Sort
+Enter choice: Running Sample Sort...
+Sample Sort execution time: 0.0162446 s
+Algorithm completed successfully!
+Results written to out.txt
+
+Want to try another algorithm? (y/n): 
+========================================
+Parallel Algorithms with MPI
+========================================
+0. Exit
+1. Quick Search
+2. Prime Number Search
+3. Bitonic Sort
+4. Radix Sort
+5. Sample Sort
+Enter choice: Exiting program...

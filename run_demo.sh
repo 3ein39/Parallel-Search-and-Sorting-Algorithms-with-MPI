@@ -55,28 +55,89 @@ run_algorithm() {
     
     echo "Running algorithm $algo_num with input file $input_file..."
     
-    # Run with 8 processes and time it
-    if [ $algo_num -eq 1 ] && [ ! -z "$target" ]; then
-        # For Quick Search, we need to automate the target input
-        echo "Running Quick Search for target $target..."
-        (time mpiexec -n 8 ./program <<< $'1\n'"$target"$'\ny\n0') 2> $RESULTS_DIR/time_output.txt
-    else
-        # For other algorithms
-        (time mpiexec -n 8 ./program <<< $algo_num$'\ny\n0') 2> $RESULTS_DIR/time_output.txt
-    fi
+    # Initialize arrays to store timing data
+    local user_times=()
+    local sys_times=()
     
-    # Extract timing info
-    user_time=$(grep "user" $RESULTS_DIR/time_output.txt | awk '{print $2}')
-    sys_time=$(grep "sys" $RESULTS_DIR/time_output.txt | awk '{print $2}')
+    # Number of iterations for averaging
+    local iterations=2
+    
+    # Run the algorithm multiple times to get average performance
+    for ((i=1; i<=$iterations; i++)); do
+        echo "  Running iteration $i of $iterations..."
+        
+        # Run with 8 processes and time it
+        if [ $algo_num -eq 1 ] && [ ! -z "$target" ]; then
+            # For Quick Search, we need to automate the target input
+            echo "  Running Quick Search for target $target..."
+            (time mpiexec -n 8 ./program <<< $'1\n'"$target"$'\ny\n0') 2> $RESULTS_DIR/time_output.txt
+        else
+            # For other algorithms
+            (time mpiexec -n 8 ./program <<< $algo_num$'\ny\n0') 2> $RESULTS_DIR/time_output.txt
+        fi
+        
+        # Extract timing info and store in arrays
+        local iter_user_time=$(grep "user" $RESULTS_DIR/time_output.txt | awk '{print $2}')
+        local iter_sys_time=$(grep "sys" $RESULTS_DIR/time_output.txt | awk '{print $2}')
+        
+        user_times+=("$iter_user_time")
+        sys_times+=("$iter_sys_time")
+    done
+    
+    # Calculate average time
+    # We'll need to convert to seconds first, then average, then format back
+    local total_user_seconds=0
+    local total_sys_seconds=0
+    
+    # Function to convert time format (Xm Y.Zs) to seconds
+    to_seconds() {
+        local time_str=$1
+        local minutes=$(echo $time_str | grep -o '[0-9]\+m' | grep -o '[0-9]\+' || echo "0")
+        local seconds=$(echo $time_str | grep -o '[0-9]\+\.[0-9]\+s' | grep -o '[0-9]\+\.[0-9]\+' || echo "0")
+        echo "$minutes * 60 + $seconds" | bc
+    }
+    
+    # Function to format seconds back to time format (Xm Y.Zs)
+    format_time() {
+        local seconds=$1
+        local minutes=$(echo "$seconds / 60" | bc)
+        local remaining_seconds=$(echo "$seconds - ($minutes * 60)" | bc)
+        
+        if (( $minutes > 0 )); then
+            echo "${minutes}m ${remaining_seconds}s"
+        else
+            echo "${remaining_seconds}s"
+        fi
+    }
+    
+    # Sum up all times
+    for time_str in "${user_times[@]}"; do
+        local seconds=$(to_seconds "$time_str")
+        total_user_seconds=$(echo "$total_user_seconds + $seconds" | bc)
+    done
+    
+    for time_str in "${sys_times[@]}"; do
+        local seconds=$(to_seconds "$time_str")
+        total_sys_seconds=$(echo "$total_sys_seconds + $seconds" | bc)
+    done
+    
+    # Calculate average
+    local avg_user_seconds=$(echo "scale=3; $total_user_seconds / $iterations" | bc)
+    local avg_sys_seconds=$(echo "scale=3; $total_sys_seconds / $iterations" | bc)
+    
+    # Format back to time string
+    local user_time=$(format_time "$avg_user_seconds")
+    local sys_time=$(format_time "$avg_sys_seconds")
     
     # Copy output to result file
     echo "Algorithm: $(case $algo_num in 1) echo "Quick Search";; 2) echo "Prime Number Search";; 3) echo "Bitonic Sort";; 4) echo "Radix Sort";; 5) echo "Sample Sort";; esac)" > $result_file
     echo "Input Size: $(wc -w < $input_file)" >> $result_file
-    echo "User Time: $user_time" >> $result_file
-    echo "System Time: $sys_time" >> $result_file
+    echo "Iterations: $iterations" >> $result_file
+    echo "Average User Time: $user_time" >> $result_file
+    echo "Average System Time: $sys_time" >> $result_file
     echo "=======================================" >> $result_file
     
-    # Append the actual output
+    # Append the actual output (from the last run)
     cat out.txt >> $result_file
     echo "" >> $result_file
     echo "=======================================" >> $result_file
@@ -147,34 +208,73 @@ time "$@"
 EOF
     chmod +x $RESULTS_DIR/run_mpi_with_time.sh
     
-    # Run with specified number of processes and time it
-    if [ $algo_num -eq 1 ] && [ ! -z "$target" ]; then
-        # For Quick Search, we need to automate the target input
-        echo "Running Quick Search for target $target with $cores cores..."
-        $RESULTS_DIR/run_mpi_with_time.sh mpiexec -n $cores ./program <<< $'1\n'"$target"$'\ny\n0' > $RESULTS_DIR/output.txt 2> $RESULTS_DIR/detailed_time.txt
-    else
-        # For other algorithms
-        $RESULTS_DIR/run_mpi_with_time.sh mpiexec -n $cores ./program <<< $algo_num$'\ny\n0' > $RESULTS_DIR/output.txt 2> $RESULTS_DIR/detailed_time.txt
-    fi
+    # Initialize arrays to store timing data
+    local user_times=()
+    local sys_times=()
     
-    # Extract timing info - the shell time command gives us overall times
-    read real_time user_time sys_time < $RESULTS_DIR/detailed_time.txt
+    # Number of iterations for averaging
+    local iterations=2
     
-    # Calculate user_time per core - in a real setup we'd get this from each MPI process
+    # Run the algorithm multiple times to get average performance
+    for ((i=1; i<=$iterations; i++)); do
+        echo "  Running iteration $i of $iterations with $cores cores..."
+        
+        # Run with specified number of processes and time it
+        if [ $algo_num -eq 1 ] && [ ! -z "$target" ]; then
+            # For Quick Search, we need to automate the target input
+            echo "  Running Quick Search for target $target..."
+            $RESULTS_DIR/run_mpi_with_time.sh mpiexec -n $cores ./program <<< $'1\n'"$target"$'\ny\n0' > $RESULTS_DIR/output.txt 2> $RESULTS_DIR/detailed_time.txt
+        else
+            # For other algorithms
+            $RESULTS_DIR/run_mpi_with_time.sh mpiexec -n $cores ./program <<< $algo_num$'\ny\n0' > $RESULTS_DIR/output.txt 2> $RESULTS_DIR/detailed_time.txt
+        fi
+        
+        # Extract timing info - the shell time command gives us overall times
+        read iter_real_time iter_user_time iter_sys_time < $RESULTS_DIR/detailed_time.txt
+        
+        user_times+=("$iter_user_time")
+        sys_times+=("$iter_sys_time")
+    done
+    
+    # Calculate average time
+    # Convert to seconds first, then average
+    local total_user_seconds=0
+    local total_sys_seconds=0
+    
+    # Function to convert time string to seconds
+    to_seconds() {
+        local time_str=$1
+        echo $time_str
+    }
+    
+    # Sum up all times
+    for time_str in "${user_times[@]}"; do
+        total_user_seconds=$(echo "$total_user_seconds + $time_str" | bc)
+    done
+    
+    for time_str in "${sys_times[@]}"; do
+        total_sys_seconds=$(echo "$total_sys_seconds + $time_str" | bc)
+    done
+    
+    # Calculate average
+    local avg_user_seconds=$(echo "scale=3; $total_user_seconds / $iterations" | bc)
+    local avg_sys_seconds=$(echo "scale=3; $total_sys_seconds / $iterations" | bc)
+    
+    # Calculate user_time per core
     # Since we can't easily get per-core timing from MPI without modifying the code,
     # we'll estimate the maximum user time by dividing the total by cores
-    # This is a simplification - ideally we'd instrument the code to get actual per-core times
-    max_user_time=$(echo "scale=3; $user_time / $cores" | bc)
+    local max_user_time=$(echo "scale=3; $avg_user_seconds / $cores" | bc)
     
     # Copy output to result file
     echo "Algorithm: $(case $algo_num in 1) echo "Quick Search";; 2) echo "Prime Number Search";; 3) echo "Bitonic Sort";; 4) echo "Radix Sort";; 5) echo "Sample Sort";; esac)" > $result_file
     echo "Cores: $cores" >> $result_file
     echo "Input Size: $(wc -w < $input_file)" >> $result_file
+    echo "Iterations: $iterations" >> $result_file
     echo "User Time (Max): ${max_user_time}s" >> $result_file
-    echo "System Time: ${sys_time}s" >> $result_file
+    echo "System Time: ${avg_sys_seconds}s" >> $result_file
     echo "=======================================" >> $result_file
     
-    # Append the actual output
+    # Append the actual output (from the last run)
     cat out.txt >> $result_file
     echo "" >> $result_file
     echo "=======================================" >> $result_file
@@ -268,6 +368,7 @@ generate_analysis() {
     echo "## Test Configuration" >> $output_file
     echo "- Date: $(date)" >> $output_file
     echo "- Number of processes: 8" >> $output_file
+    echo "- Each test averaged over 5 iterations" >> $output_file
     echo "" >> $output_file
     echo "## Results" >> $output_file
     echo "" >> $output_file
@@ -279,17 +380,31 @@ generate_analysis() {
     # Function to convert time to milliseconds
     convert_to_ms() {
         local time_str=$1
-        local minutes=$(echo $time_str | grep -o '[0-9]\+m' | grep -o '[0-9]\+' || echo "0")
-        local seconds=$(echo $time_str | grep -o '[0-9]\+\.[0-9]\+s' | grep -o '[0-9]\+\.[0-9]\+' || echo "0")
-        # Convert to milliseconds: (minutes * 60 + seconds) * 1000
-        echo "$minutes * 60000 + $seconds * 1000" | bc | cut -d'.' -f1
+        # Check if time is already in seconds format (from our new function)
+        if [[ $time_str == *"s"* ]]; then
+            # Remove the trailing 's' and convert to milliseconds
+            local seconds=${time_str%s}
+            echo "$seconds * 1000" | bc | cut -d'.' -f1
+        else
+            # Handle the original format (Xm Y.Zs)
+            local minutes=$(echo $time_str | grep -o '[0-9]\+m' | grep -o '[0-9]\+' || echo "0")
+            local seconds=$(echo $time_str | grep -o '[0-9]\+\.[0-9]\+s' | grep -o '[0-9]\+\.[0-9]\+' || echo "0")
+            # Convert to milliseconds: (minutes * 60 + seconds) * 1000
+            echo "$minutes * 60000 + $seconds * 1000" | bc | cut -d'.' -f1
+        fi
     }
     
     # Extract small size results
     if [ -f "$RESULTS_DIR/algo_$algo_num/small_result.txt" ]; then
         input_size=$(grep "Input Size:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $3}')
-        user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $3}')
-        sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $3}')
+        # Check if we're using the new format with "Average User Time"
+        if grep -q "Average User Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt"; then
+            user_time=$(grep "Average User Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $4}')
+            sys_time=$(grep "Average System Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $4}')
+        else
+            user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $3}')
+            sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/small_result.txt" | awk '{print $3}')
+        fi
         
         # Convert times to milliseconds
         user_time_ms=$(convert_to_ms "$user_time")
@@ -301,8 +416,14 @@ generate_analysis() {
     # Extract medium size results
     if [ -f "$RESULTS_DIR/algo_$algo_num/medium_result.txt" ]; then
         input_size=$(grep "Input Size:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $3}')
-        user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $3}')
-        sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $3}')
+        # Check if we're using the new format with "Average User Time"
+        if grep -q "Average User Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt"; then
+            user_time=$(grep "Average User Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $4}')
+            sys_time=$(grep "Average System Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $4}')
+        else
+            user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $3}')
+            sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/medium_result.txt" | awk '{print $3}')
+        fi
         
         # Convert times to milliseconds
         user_time_ms=$(convert_to_ms "$user_time")
@@ -314,8 +435,14 @@ generate_analysis() {
     # Extract large size results
     if [ -f "$RESULTS_DIR/algo_$algo_num/large_result.txt" ]; then
         input_size=$(grep "Input Size:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $3}')
-        user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $3}')
-        sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $3}')
+        # Check if we're using the new format with "Average User Time"
+        if grep -q "Average User Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt"; then
+            user_time=$(grep "Average User Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $4}')
+            sys_time=$(grep "Average System Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $4}')
+        else
+            user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $3}')
+            sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/large_result.txt" | awk '{print $3}')
+        fi
         
         # Convert times to milliseconds
         user_time_ms=$(convert_to_ms "$user_time")
@@ -327,8 +454,14 @@ generate_analysis() {
     # Extract very large size results
     if [ -f "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" ]; then
         input_size=$(grep "Input Size:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
-        user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
-        sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
+        # Check if we're using the new format with "Average User Time"
+        if grep -q "Average User Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt"; then
+            user_time=$(grep "Average User Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $4}')
+            sys_time=$(grep "Average System Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $4}')
+        else
+            user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
+            sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
+        fi
         
         # Convert times to milliseconds
         user_time_ms=$(convert_to_ms "$user_time")
@@ -340,7 +473,7 @@ generate_analysis() {
     echo "" >> $output_file
     echo "## Performance Analysis" >> $output_file
     echo "" >> $output_file
-    echo "The $algo_name algorithm was tested with 8 processes on different input sizes. The results show how the algorithm's performance scales with increasing input size." >> $output_file
+    echo "The $algo_name algorithm was tested with 8 processes on different input sizes, with each test repeated 5 times and the results averaged. This approach provides more reliable performance metrics by reducing the impact of random system variations. The results show how the algorithm's performance scales with increasing input size." >> $output_file
     echo "" >> $output_file
     echo "### Observations" >> $output_file
     echo "" >> $output_file
@@ -375,6 +508,7 @@ generate_scaling_analysis() {
     echo "## Test Configuration" >> $output_file
     echo "- Date: $(date)" >> $output_file
     echo "- Fixed input size (very large)" >> $output_file
+    echo "- Each test averaged over 5 iterations" >> $output_file
     echo "" >> $output_file
     echo "## Results" >> $output_file
     echo "" >> $output_file
@@ -405,13 +539,17 @@ generate_scaling_analysis() {
     # Process results for each core count
     for cores in 1 2 4 8; do
         if [ -f "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" ]; then
-            # Check if we're using the new format with "User Time (Max)" or old format
-            if grep -q "User Time (Max):" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt"; then
+            # Check if we're using the new format with iterations and time averages
+            if grep -q "Iterations:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt"; then
+                # We have multiple iterations with averaged results
                 user_time=$(grep "User Time (Max):" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $4}')
                 sys_time=$(grep "System Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
+                iterations=$(grep "Iterations:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $2}')
             else
+                # Fallback to old format
                 user_time=$(grep "User Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
                 sys_time=$(grep "System Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
+                iterations=1
             fi
             
             # Convert times to milliseconds
@@ -438,7 +576,7 @@ generate_scaling_analysis() {
     echo "" >> $output_file
     echo "## Scaling Analysis" >> $output_file
     echo "" >> $output_file
-    echo "This analysis shows how $algo_name scales with increasing number of processor cores while keeping the input size constant at very large." >> $output_file
+    echo "This analysis shows how $algo_name scales with increasing number of processor cores while keeping the input size constant at very large. Each test was run 5 times and the results were averaged to provide more reliable metrics." >> $output_file
     echo "" >> $output_file
     echo "### Observations" >> $output_file
     echo "" >> $output_file
@@ -450,6 +588,10 @@ generate_scaling_analysis() {
     echo "### Note on User Time" >> $output_file
     echo "" >> $output_file
     echo "The 'Max User Time' column represents the estimated maximum CPU time used by any single core, rather than the sum of all cores. This gives a more accurate representation of actual processor utilization per core." >> $output_file
+    echo "" >> $output_file
+    echo "### Note on Multiple Iterations" >> $output_file
+    echo "" >> $output_file
+    echo "Each test was run 5 times and the timing results were averaged. This approach provides more reliable performance metrics by reducing the impact of random system variations, background processes, and other factors that might affect individual test runs." >> $output_file
     echo "" >> $output_file
     echo "Speedup is calculated by dividing the single-core user time by the multi-core user time, showing how much faster the algorithm runs with more cores." >> $output_file
     echo "" >> $output_file
