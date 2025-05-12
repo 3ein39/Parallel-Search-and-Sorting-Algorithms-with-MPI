@@ -9,6 +9,7 @@ extern void parallelPrimeSearch(int start, int end);
 extern void bitonicSortParallel(vector<int>& local_data, int local_n, int total_n, int rank, int size, MPI_Comm comm);
 extern bool runBitonicSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm);
 extern bool runSampleSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm);
+extern bool runQuickSearch(const char* inputFile, const char* outputFile, int target, int rank, int size, MPI_Comm comm);
 
 
 // Function to read array data for Sorting and searching algorithms
@@ -80,15 +81,21 @@ int main(int argc, char **argv)
         {
         case 1:
         {
-            if (rank == 0)
-            {
-                int target;
+            int target = 0;
+            if (rank == 0) {
                 cout << "Enter Search Target: ";
                 cin >> target;
                 cout << "Running Quick Search...\n";
-                // Read array data from file using the function readArrayData
-                // Call quick search with the data
             }
+            
+            // Broadcast the target value to all processes
+            MPI_Bcast(&target, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            
+            // Call the wrapper function that handles everything
+            bool success = runQuickSearch("in.txt", "out.txt", target, rank, size, MPI_COMM_WORLD);
+            
+            // Set error flag if search failed
+            is_error = !success;
             break;
         }
 

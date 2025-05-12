@@ -165,28 +165,48 @@ public:
     }
 };
 
-int main(int argc, char** argv) {
-    // Initialize MPI
-    MPI_Init(&argc, &argv);
-
-    // Check command-line arguments
-    if (argc != 3) {
-        MPI_Finalize();
-        return 1;
-    }
-
-    // Parse input
-    string input_file = argv[1];
-    int target = stoi(argv[2]);
-
+// Wrapper function to call the QuickSearch from source.cpp
+bool runQuickSearch(const char* inputFile, const char* outputFile, int target, int rank, int size, MPI_Comm comm) {
+    // Start timing
+    MPI_Barrier(comm);
+    double start_time = MPI_Wtime();
+    
     // Create Parallel Quick Search object
-    ParallelQuickSearch pqs(MPI_COMM_WORLD);
-
-    // Perform parallel quick search
-    int result = pqs.findElement(input_file, target);
-
-    // Finalize MPI
-    MPI_Finalize();
-
-    return result;
+    ParallelQuickSearch pqs(comm);
+    
+    // Perform the search
+    int result = pqs.findElement(inputFile, target);
+    
+    // End timing
+    double end_time = MPI_Wtime();
+    MPI_Barrier(comm);
+    
+    // Only the root process will write results
+    if (rank == 0) {
+        // Calculate duration
+        double duration = (end_time - start_time) * 1000; // milliseconds
+        
+        // Write results to output file
+        ofstream outFile(outputFile);
+        outFile << "Quick Search Results:\n";
+        
+        if (result == -2) {
+            outFile << "Error: Could not open input file\n";
+            cout << "Error: Could not open input file\n";
+            return false;
+        } else if (result == -1) {
+            outFile << "Target " << target << " not found in dataset\n";
+            cout << "Target " << target << " not found in dataset\n";
+        } else {
+            outFile << "Target " << target << " found at position " << result << "\n";
+            cout << "Target " << target << " found at position " << result << "\n";
+        }
+        
+        outFile << "Execution time: " << duration << " ms\n";
+        cout << "Quick Search execution time: " << duration << " ms\n";
+        
+        outFile.close();
+    }
+    
+    return (result >= -1);  // Return true if search was performed, even if target not found
 }
