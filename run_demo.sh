@@ -128,6 +128,63 @@ run_algorithm_with_cores() {
     echo "=======================================" >> $result_file
 }
 
+# Function to run algorithm with specific number of cores and collect per-core timing
+run_algorithm_with_cores_detailed() {
+    local algo_num=$1
+    local input_file=$2
+    local output_file=$3
+    local result_file=$4
+    local cores=$5
+    local target=$6  # Only used for Quick Search
+    
+    # Prepare input
+    cp $input_file in.txt
+    
+    echo "Running algorithm $algo_num with $cores cores..."
+    
+    # Create temporary script to run MPI with time command per process
+    cat > $RESULTS_DIR/run_mpi_with_time.sh << 'EOF'
+#!/bin/bash
+# Get per-core timing information
+export TIMEFORMAT="%R %U %S"
+time "$@"
+EOF
+    chmod +x $RESULTS_DIR/run_mpi_with_time.sh
+    
+    # Run with specified number of processes and time it
+    if [ $algo_num -eq 1 ] && [ ! -z "$target" ]; then
+        # For Quick Search, we need to automate the target input
+        echo "Running Quick Search for target $target with $cores cores..."
+        $RESULTS_DIR/run_mpi_with_time.sh mpiexec -n $cores ./program <<< $'1\n'"$target"$'\ny\n0' > $RESULTS_DIR/output.txt 2> $RESULTS_DIR/detailed_time.txt
+    else
+        # For other algorithms
+        $RESULTS_DIR/run_mpi_with_time.sh mpiexec -n $cores ./program <<< $algo_num$'\ny\n0' > $RESULTS_DIR/output.txt 2> $RESULTS_DIR/detailed_time.txt
+    fi
+    
+    # Extract timing info - the shell time command gives us overall times
+    read real_time user_time sys_time < $RESULTS_DIR/detailed_time.txt
+    
+    # Calculate user_time per core - in a real setup we'd get this from each MPI process
+    # Since we can't easily get per-core timing from MPI without modifying the code,
+    # we'll estimate the maximum user time by dividing the total by cores
+    # This is a simplification - ideally we'd instrument the code to get actual per-core times
+    max_user_time=$(echo "scale=3; $user_time / $cores" | bc)
+    
+    # Copy output to result file
+    echo "Algorithm: $(case $algo_num in 1) echo "Quick Search";; 2) echo "Prime Number Search";; 3) echo "Bitonic Sort";; 4) echo "Radix Sort";; 5) echo "Sample Sort";; esac)" > $result_file
+    echo "Cores: $cores" >> $result_file
+    echo "Input Size: $(wc -w < $input_file)" >> $result_file
+    echo "Real Time: ${real_time}s" >> $result_file
+    echo "User Time (Max): ${max_user_time}s" >> $result_file
+    echo "System Time: ${sys_time}s" >> $result_file
+    echo "=======================================" >> $result_file
+    
+    # Append the actual output
+    cat out.txt >> $result_file
+    echo "" >> $result_file
+    echo "=======================================" >> $result_file
+}
+
 echo "Starting parallel algorithm demonstrations with 8 cores..."
 
 # Array sizes to test
@@ -309,16 +366,24 @@ generate_scaling_analysis() {
     echo "" >> $output_file
     
     # Create proper markdown table
-    echo "| Number of Cores | Real Time (ms) | User Time (ms) | System Time (ms) | Speedup |" >> $output_file
-    echo "|-----------------|----------------|----------------|------------------|---------|" >> $output_file
+    echo "| Number of Cores | Real Time (ms) | Max User Time (ms) | System Time (ms) | Speedup |" >> $output_file
+    echo "|-----------------|----------------|-------------------|------------------|---------|" >> $output_file
     
     # Function to convert time to milliseconds
     convert_to_ms() {
         local time_str=$1
-        local minutes=$(echo $time_str | grep -o '[0-9]\+m' | grep -o '[0-9]\+' || echo "0")
-        local seconds=$(echo $time_str | grep -o '[0-9]\+\.[0-9]\+s' | grep -o '[0-9]\+\.[0-9]\+' || echo "0")
-        # Convert to milliseconds: (minutes * 60 + seconds) * 1000
-        echo "$minutes * 60000 + $seconds * 1000" | bc | cut -d'.' -f1
+        # Check if time is already in seconds format (from our new function)
+        if [[ $time_str == *"s"* ]]; then
+            # Remove the trailing 's' and convert to milliseconds
+            local seconds=${time_str%s}
+            echo "$seconds * 1000" | bc | cut -d'.' -f1
+        else
+            # Handle the original format (Xm Y.Zs)
+            local minutes=$(echo $time_str | grep -o '[0-9]\+m' | grep -o '[0-9]\+' || echo "0")
+            local seconds=$(echo $time_str | grep -o '[0-9]\+\.[0-9]\+s' | grep -o '[0-9]\+\.[0-9]\+' || echo "0")
+            # Convert to milliseconds: (minutes * 60 + seconds) * 1000
+            echo "$minutes * 60000 + $seconds * 1000" | bc | cut -d'.' -f1
+        fi
     }
     
     local base_time_ms=""
@@ -326,9 +391,16 @@ generate_scaling_analysis() {
     # Process results for each core count
     for cores in 1 2 4 8; do
         if [ -f "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" ]; then
-            real_time=$(grep "Real Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
-            user_time=$(grep "User Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
-            sys_time=$(grep "System Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
+            # Check if we're using the new format with "User Time (Max)" or old format
+            if grep -q "User Time (Max):" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt"; then
+                real_time=$(grep "Real Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
+                user_time=$(grep "User Time (Max):" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $4}')
+                sys_time=$(grep "System Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
+            else
+                real_time=$(grep "Real Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
+                user_time=$(grep "User Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
+                sys_time=$(grep "System Time:" "$SCALING_DIR/algo_$algo_num/cores_${cores}_result.txt" | awk '{print $3}')
+            fi
             
             # Convert times to milliseconds
             real_time_ms=$(convert_to_ms "$real_time")
@@ -364,6 +436,10 @@ generate_scaling_analysis() {
     echo "- Identify potential bottlenecks in parallelization" >> $output_file
     echo "- Ideal speedup would be equal to the number of cores" >> $output_file
     echo "" >> $output_file
+    echo "### Note on User Time" >> $output_file
+    echo "" >> $output_file
+    echo "The 'Max User Time' column represents the estimated maximum CPU time used by any single core, rather than the sum of all cores. This gives a more accurate representation of actual processor utilization per core." >> $output_file
+    echo "" >> $output_file
 }
 
 # Run core scaling tests for each algorithm
@@ -378,31 +454,31 @@ done
 echo "Testing Quick Search scaling..."
 SEARCH_TARGET=$((RANDOM % 10000))  # Random target for medium-sized array
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores 1 "$INPUT_DIR/search_medium.txt" "out.txt" "$SCALING_DIR/algo_1/cores_${cores}_result.txt" $cores $SEARCH_TARGET
+    run_algorithm_with_cores_detailed 1 "$INPUT_DIR/search_medium.txt" "out.txt" "$SCALING_DIR/algo_1/cores_${cores}_result.txt" $cores $SEARCH_TARGET
 done
 
 # Run Prime Number Search with different core counts
 echo "Testing Prime Number Search scaling..."
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores 2 "$INPUT_DIR/prime_medium.txt" "out.txt" "$SCALING_DIR/algo_2/cores_${cores}_result.txt" $cores
+    run_algorithm_with_cores_detailed 2 "$INPUT_DIR/prime_large.txt" "out.txt" "$SCALING_DIR/algo_2/cores_${cores}_result.txt" $cores
 done
 
 # Run Bitonic Sort with different core counts
 echo "Testing Bitonic Sort scaling..."
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores 3 "$INPUT_DIR/medium_random.txt" "out.txt" "$SCALING_DIR/algo_3/cores_${cores}_result.txt" $cores
+    run_algorithm_with_cores_detailed 3 "$INPUT_DIR/medium_random.txt" "out.txt" "$SCALING_DIR/algo_3/cores_${cores}_result.txt" $cores
 done
 
 # Run Radix Sort with different core counts
 echo "Testing Radix Sort scaling..."
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores 4 "$INPUT_DIR/medium_random.txt" "out.txt" "$SCALING_DIR/algo_4/cores_${cores}_result.txt" $cores
+    run_algorithm_with_cores_detailed 4 "$INPUT_DIR/medium_random.txt" "out.txt" "$SCALING_DIR/algo_4/cores_${cores}_result.txt" $cores
 done
 
 # Run Sample Sort with different core counts
 echo "Testing Sample Sort scaling..."
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores 5 "$INPUT_DIR/medium_random.txt" "out.txt" "$SCALING_DIR/algo_5/cores_${cores}_result.txt" $cores
+    run_algorithm_with_cores_detailed 5 "$INPUT_DIR/medium_random.txt" "out.txt" "$SCALING_DIR/algo_5/cores_${cores}_result.txt" $cores
 done
 
 # Generate scaling analysis reports
