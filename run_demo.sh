@@ -191,9 +191,11 @@ echo "Starting parallel algorithm demonstrations with 8 cores..."
 SMALL_SIZE=1024
 MEDIUM_SIZE=4096
 LARGE_SIZE=16384
+VERY_LARGE_SIZE=65536   # Added very large size (4x larger than large)
 PRIME_SMALL=10000
 PRIME_MEDIUM=100000
 PRIME_LARGE=1000000
+PRIME_VERY_LARGE=10000000  # Added very large prime range (10x larger than large)
 
 # Create input data directory
 INPUT_DIR="$RESULTS_DIR/inputs"
@@ -203,11 +205,13 @@ mkdir -p $INPUT_DIR
 generate_random_array $SMALL_SIZE "$INPUT_DIR/small_random.txt"
 generate_random_array $MEDIUM_SIZE "$INPUT_DIR/medium_random.txt"
 generate_random_array $LARGE_SIZE "$INPUT_DIR/large_random.txt"
+generate_random_array $VERY_LARGE_SIZE "$INPUT_DIR/very_large_random.txt"  # Generate very large random array
 
 # Generate inputs for prime search
 generate_prime_range $PRIME_SMALL "$INPUT_DIR/prime_small.txt"
 generate_prime_range $PRIME_MEDIUM "$INPUT_DIR/prime_medium.txt"
 generate_prime_range $PRIME_LARGE "$INPUT_DIR/prime_large.txt"
+generate_prime_range $PRIME_VERY_LARGE "$INPUT_DIR/prime_very_large.txt"  # Generate very large prime range
 
 # Run sorting algorithms on different inputs
 for algo in 3 4 5; do  # 3=Bitonic, 4=Radix, 5=Sample
@@ -223,6 +227,9 @@ for algo in 3 4 5; do  # 3=Bitonic, 4=Radix, 5=Sample
     
     # Test large input
     run_algorithm $algo "$INPUT_DIR/large_random.txt" "out.txt" "$RESULTS_DIR/algo_$algo/large_result.txt"
+    
+    # Test very large input
+    run_algorithm $algo "$INPUT_DIR/very_large_random.txt" "out.txt" "$RESULTS_DIR/algo_$algo/very_large_result.txt"
 done
 
 # Run Prime Number Search on different ranges
@@ -231,6 +238,7 @@ mkdir -p "$RESULTS_DIR/algo_2"  # 2=Prime Number Search
 run_algorithm 2 "$INPUT_DIR/prime_small.txt" "out.txt" "$RESULTS_DIR/algo_2/small_result.txt"
 run_algorithm 2 "$INPUT_DIR/prime_medium.txt" "out.txt" "$RESULTS_DIR/algo_2/medium_result.txt"
 run_algorithm 2 "$INPUT_DIR/prime_large.txt" "out.txt" "$RESULTS_DIR/algo_2/large_result.txt"
+run_algorithm 2 "$INPUT_DIR/prime_very_large.txt" "out.txt" "$RESULTS_DIR/algo_2/very_large_result.txt"
 
 # Run Quick Search with different targets
 echo "Testing Quick Search..."
@@ -246,6 +254,10 @@ run_algorithm 1 "$INPUT_DIR/search_medium.txt" "out.txt" "$RESULTS_DIR/algo_1/me
 generate_random_array 100000 "$INPUT_DIR/search_large.txt"
 SEARCH_TARGET=$((RANDOM % 100000))  # Random target
 run_algorithm 1 "$INPUT_DIR/search_large.txt" "out.txt" "$RESULTS_DIR/algo_1/large_result.txt" $SEARCH_TARGET
+
+generate_random_array 1000000 "$INPUT_DIR/search_very_large.txt"
+SEARCH_TARGET=$((RANDOM % 1000000))  # Random target
+run_algorithm 1 "$INPUT_DIR/search_very_large.txt" "out.txt" "$RESULTS_DIR/algo_1/very_large_result.txt" $SEARCH_TARGET
 
 # Generate analysis reports
 echo "Generating analysis reports..."
@@ -323,6 +335,21 @@ generate_analysis() {
         echo "| $input_size | $real_time_ms | $user_time_ms | $sys_time_ms |" >> $output_file
     fi
     
+    # Extract very large size results
+    if [ -f "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" ]; then
+        input_size=$(grep "Input Size:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
+        real_time=$(grep "Real Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
+        user_time=$(grep "User Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
+        sys_time=$(grep "System Time:" "$RESULTS_DIR/algo_$algo_num/very_large_result.txt" | awk '{print $3}')
+        
+        # Convert times to milliseconds
+        real_time_ms=$(convert_to_ms "$real_time")
+        user_time_ms=$(convert_to_ms "$user_time")
+        sys_time_ms=$(convert_to_ms "$sys_time")
+        
+        echo "| $input_size | $real_time_ms | $user_time_ms | $sys_time_ms |" >> $output_file
+    fi
+    
     echo "" >> $output_file
     echo "## Performance Analysis" >> $output_file
     echo "" >> $output_file
@@ -344,7 +371,7 @@ generate_analysis 4 "Radix Sort" "$RESULTS_DIR/radix_sort_analysis.md"
 generate_analysis 5 "Sample Sort" "$RESULTS_DIR/sample_sort_analysis.md"
 
 # Add core scaling analysis section
-echo "Starting core scaling analysis with medium-sized inputs..."
+echo "Starting core scaling analysis with very large inputs..."
 
 # Directory for core scaling results
 SCALING_DIR="$RESULTS_DIR/core_scaling"
@@ -360,7 +387,7 @@ generate_scaling_analysis() {
     echo "" >> $output_file
     echo "## Test Configuration" >> $output_file
     echo "- Date: $(date)" >> $output_file
-    echo "- Fixed input size (medium)" >> $output_file
+    echo "- Fixed input size (very large)" >> $output_file
     echo "" >> $output_file
     echo "## Results" >> $output_file
     echo "" >> $output_file
@@ -427,7 +454,7 @@ generate_scaling_analysis() {
     echo "" >> $output_file
     echo "## Scaling Analysis" >> $output_file
     echo "" >> $output_file
-    echo "This analysis shows how $algo_name scales with increasing number of processor cores while keeping the input size constant." >> $output_file
+    echo "This analysis shows how $algo_name scales with increasing number of processor cores while keeping the input size constant at very large." >> $output_file
     echo "" >> $output_file
     echo "### Observations" >> $output_file
     echo "" >> $output_file
@@ -452,33 +479,33 @@ done
 
 # Run Quick Search with different core counts
 echo "Testing Quick Search scaling..."
-SEARCH_TARGET=$((RANDOM % 10000))  # Random target for medium-sized array
+SEARCH_TARGET=$((RANDOM % 1000000))  # Random target for very large array
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores_detailed 1 "$INPUT_DIR/search_medium.txt" "out.txt" "$SCALING_DIR/algo_1/cores_${cores}_result.txt" $cores $SEARCH_TARGET
+    run_algorithm_with_cores_detailed 1 "$INPUT_DIR/search_very_large.txt" "out.txt" "$SCALING_DIR/algo_1/cores_${cores}_result.txt" $cores $SEARCH_TARGET
 done
 
 # Run Prime Number Search with different core counts
 echo "Testing Prime Number Search scaling..."
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores_detailed 2 "$INPUT_DIR/prime_large.txt" "out.txt" "$SCALING_DIR/algo_2/cores_${cores}_result.txt" $cores
+    run_algorithm_with_cores_detailed 2 "$INPUT_DIR/prime_very_large.txt" "out.txt" "$SCALING_DIR/algo_2/cores_${cores}_result.txt" $cores
 done
 
 # Run Bitonic Sort with different core counts
 echo "Testing Bitonic Sort scaling..."
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores_detailed 3 "$INPUT_DIR/medium_random.txt" "out.txt" "$SCALING_DIR/algo_3/cores_${cores}_result.txt" $cores
+    run_algorithm_with_cores_detailed 3 "$INPUT_DIR/very_large_random.txt" "out.txt" "$SCALING_DIR/algo_3/cores_${cores}_result.txt" $cores
 done
 
 # Run Radix Sort with different core counts
 echo "Testing Radix Sort scaling..."
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores_detailed 4 "$INPUT_DIR/medium_random.txt" "out.txt" "$SCALING_DIR/algo_4/cores_${cores}_result.txt" $cores
+    run_algorithm_with_cores_detailed 4 "$INPUT_DIR/very_large_random.txt" "out.txt" "$SCALING_DIR/algo_4/cores_${cores}_result.txt" $cores
 done
 
 # Run Sample Sort with different core counts
 echo "Testing Sample Sort scaling..."
 for cores in 1 2 4 8; do
-    run_algorithm_with_cores_detailed 5 "$INPUT_DIR/medium_random.txt" "out.txt" "$SCALING_DIR/algo_5/cores_${cores}_result.txt" $cores
+    run_algorithm_with_cores_detailed 5 "$INPUT_DIR/very_large_random.txt" "out.txt" "$SCALING_DIR/algo_5/cores_${cores}_result.txt" $cores
 done
 
 # Generate scaling analysis reports
