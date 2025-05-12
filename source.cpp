@@ -93,7 +93,7 @@ int main(int argc, char **argv)
             MPI_Bcast(&target, 1, MPI_INT, 0, MPI_COMM_WORLD);
             
             // Call the wrapper function that handles everything
-            bool success = runQuickSearch("in.txt", "out.txt", target, rank, size, MPI_COMM_WORLD);
+            bool success = runQuickSearch("Performance_Results/inputs/search_large.txt", "out.txt", target, rank, size, MPI_COMM_WORLD);
             
             // Set error flag if search failed
             is_error = !success;
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
             }
             
             // Call the wrapper function that handles everything
-            bool success = runRadixSort("in.txt", "out.txt", rank, size, MPI_COMM_WORLD);
+            bool success = runRadixSort("Performance_Results/inputs/prime_small.txt", "out.txt", rank, size, MPI_COMM_WORLD);
             
             // Set error flag if sorting failed
             is_error = !success;
@@ -156,8 +156,8 @@ int main(int argc, char **argv)
             }
             
             // Call the wrapper function that handles everything
-            bool success = runSampleSort("in.txt", "out.txt", rank, size, MPI_COMM_WORLD);
-            
+            bool success = runSampleSort("Performance_Results/inputs/small_random.txt", "out.txt", rank, size, MPI_COMM_WORLD);
+
             // Set error flag if sorting failed
             is_error = !success;
             break;

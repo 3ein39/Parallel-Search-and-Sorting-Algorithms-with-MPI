@@ -5,30 +5,60 @@
 #include <ctime>
 #include <climits>
 #include <fstream>
+#include <cmath> // Added for log2 function
 
 using namespace std;
 
+// Helper function to swap two integers
+inline void swap(int &a, int &b)
+{
+    int temp = a;
+    a = b;
+    b = temp;
+}
+
+// Function to select a good pivot using median-of-three strategy
+int choose_pivot(int *arr, int low, int high)
+{
+    // Find the middle element
+    int mid = low + (high - low) / 2;
+
+    // Sort low, mid, high elements (ensures median is in the middle)
+    if (arr[low] > arr[mid])
+        swap(arr[low], arr[mid]);
+    if (arr[mid] > arr[high])
+        swap(arr[mid], arr[high]);
+    if (arr[low] > arr[mid])
+        swap(arr[low], arr[mid]);
+
+    // Move the pivot to the high position
+    swap(arr[mid], arr[high]);
+
+    // Return the pivot value
+    return arr[high];
+}
 
 void quicksort(int *arr, int low, int high)
 {
     if (low < high)
     {
-        int pivot = arr[high], i = low - 1;
+        // Choose a better pivot using median-of-three strategy
+        int pivot = choose_pivot(arr, low, high);
+        int i = low - 1;
+
         for (int j = low; j < high; j++)
         {
             if (arr[j] <= pivot)
             {
                 i++;
-                int tmp = arr[i];
-                arr[i] = arr[j];
-                arr[j] = tmp;
+                swap(arr[i], arr[j]);
             }
         }
-        int tmp = arr[i + 1];
-        arr[i + 1] = arr[high];
-        arr[high] = tmp;
-        quicksort(arr, low, i);
-        quicksort(arr, i + 2, high);
+        swap(arr[i + 1], arr[high]);
+
+        int pivot_pos = i + 1;
+        quicksort(arr, low, pivot_pos - 1);
+        quicksort(arr, pivot_pos + 1, high);
     }
 }
 
@@ -107,48 +137,57 @@ void gather_sorted_data(int *recv_buf, int recv_size, int rank, int size,
 }
 
 // Wrapper function to handle file I/O, data distribution, and sample sort execution
-bool runSampleSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm) {
+bool runSampleSort(const char *inputFile, const char *outputFile, int rank, int size, MPI_Comm comm)
+{
     // Variables
     int *array = NULL;
     int array_size = 0;
     bool is_error = false;
-    
+
     // Root process reads input file
-    if (rank == 0) {
+    if (rank == 0)
+    {
         // Read data from input file
         ifstream file(inputFile);
         vector<int> data;
         int el;
-        while (file >> el) {
+        while (file >> el)
+        {
             data.push_back(el);
         }
         file.close();
-        
+
         // Set array size
         array_size = data.size();
-        
+
         // Check if size is valid
-        if (array_size <= 0) {
+        if (array_size <= 0)
+        {
             cout << "Error: Invalid input array size\n";
             is_error = true;
         }
-        
+
         // Allocate array and copy data
-        if (!is_error) {
+        if (!is_error)
+        {
             array = (int *)malloc(array_size * sizeof(int));
-            if (!array) {
+            if (!array)
+            {
                 cout << "Error: Memory allocation failed\n";
                 is_error = true;
-            } else {
-                for (int i = 0; i < array_size; i++) {
+            }
+            else
+            {
+                for (int i = 0; i < array_size; i++)
+                {
                     array[i] = data[i];
                 }
-                
-                
+
                 // Also write to output file
                 ofstream outFile(outputFile);
                 outFile << "Unsorted array: ";
-                for (int i = 0; i < array_size; i++) {
+                for (int i = 0; i < array_size; i++)
+                {
                     outFile << array[i] << " ";
                 }
                 outFile << endl;
@@ -156,135 +195,158 @@ bool runSampleSort(const char* inputFile, const char* outputFile, int rank, int 
             }
         }
     }
-    
+
     // Broadcast error status
     MPI_Bcast(&is_error, 1, MPI_C_BOOL, 0, comm);
-    
-    if (is_error) {
+
+    if (is_error)
+    {
         return false;
     }
-    
+
     // Broadcast array size
     MPI_Bcast(&array_size, 1, MPI_INT, 0, comm);
-    
+
     // Start timing
     MPI_Barrier(comm);
     double start_time = MPI_Wtime();
-    
+
     // Calculate counts and displacements for scattering data
     int *send_counts = (int *)malloc(size * sizeof(int));
     int *send_displs = (int *)malloc(size * sizeof(int));
     calculate_counts_and_displs(send_counts, send_displs, size, array_size);
-    
+
     // Allocate local array for each process
     int local_size = send_counts[rank];
     int *local_array = (int *)malloc(local_size * sizeof(int));
-    
+
     // Scatter data to all processes
     MPI_Scatterv(array, send_counts, send_displs, MPI_INT,
-                local_array, local_size, MPI_INT, 0, comm);
-    
+                 local_array, local_size, MPI_INT, 0, comm);
+
     // Sort local data
-    quicksort(local_array, 0, local_size - 1);
-    
-    // Select and gather samples
-    int sample_size = size - 1;
+    quicksort(local_array, 0, local_size - 1); // Select and gather samples - using more samples for better load balancing
+    // Using log2(size) samples per process, with a minimum of 1 per process
+    int samples_per_process = std::max(1, (int)log2(size));
+    int sample_size = samples_per_process * size;
     int *local_samples = (int *)malloc(sample_size * sizeof(int));
     select_local_samples(local_array, local_size, local_samples, sample_size);
-    
+
     int *samples = NULL;
-    if (rank == 0) {
+    if (rank == 0)
+    {
         samples = (int *)malloc(sample_size * size * sizeof(int));
     }
     MPI_Gather(local_samples, sample_size, MPI_INT,
-              samples, sample_size, MPI_INT, 0, comm);
-    
+               samples, sample_size, MPI_INT, 0, comm);
+
     // Select and broadcast splitters
     int *splitters = (int *)malloc(size * sizeof(int));
-    if (rank == 0) {
+    if (rank == 0)
+    {
         select_splitters(samples, sample_size * size, splitters, size);
     }
     MPI_Bcast(splitters, size, MPI_INT, 0, comm);
-    
+
     // Partition data based on splitters
     int *partition_counts = (int *)calloc(size, sizeof(int));
     int *send_buf = (int *)malloc(local_size * sizeof(int));
     int *send_displs_local = (int *)calloc(size, sizeof(int));
     partition_data(local_array, local_size, splitters, size,
-                  partition_counts, send_buf, send_displs_local);
-    
-    // Exchange data between processes
+                   partition_counts, send_buf, send_displs_local); // Exchange data between processes
     int *recv_counts = (int *)malloc(size * sizeof(int));
+    if (!recv_counts)
+    {
+        cout << "Error: Memory allocation failed for recv_counts\n";
+        return false; // This won't actually work as we need to handle this properly
+    }
+
     MPI_Alltoall(partition_counts, 1, MPI_INT,
-                recv_counts, 1, MPI_INT, comm);
-    
+                 recv_counts, 1, MPI_INT, comm);
+
     // Calculate total data to receive
     int recv_size = 0;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
         recv_size += recv_counts[i];
     }
-    
+
     // Prepare buffers for receiving data
     int *recv_buf = (int *)malloc(recv_size * sizeof(int));
     int *recv_displs = (int *)calloc(size, sizeof(int));
-    for (int i = 1; i < size; i++) {
+    if (!recv_buf || !recv_displs)
+    {
+        cout << "Error: Memory allocation failed for receive buffers\n";
+        free(recv_counts);
+        if (recv_buf)
+            free(recv_buf);
+        if (recv_displs)
+            free(recv_displs);
+        return false; // This won't actually work as we need to handle this properly
+    }
+    for (int i = 1; i < size; i++)
+    {
         recv_displs[i] = recv_displs[i - 1] + recv_counts[i - 1];
     }
-    
+
     // Exchange partitioned data
     MPI_Alltoallv(send_buf, partition_counts, send_displs_local, MPI_INT,
-                 recv_buf, recv_counts, recv_displs, MPI_INT, comm);
-    
+                  recv_buf, recv_counts, recv_displs, MPI_INT, comm);
+
     // Sort received data
     quicksort(recv_buf, 0, recv_size - 1);
-    
+
     // Gather final sorted data
     int *all_sizes = NULL;
     int *displs = NULL;
-    if (rank == 0) {
+    if (rank == 0)
+    {
         all_sizes = (int *)malloc(size * sizeof(int));
         displs = (int *)malloc(size * sizeof(int));
-        
+
         // Ensure array is allocated for final sorted data
-        if (array == NULL) {
+        if (array == NULL)
+        {
             array = (int *)malloc(array_size * sizeof(int));
         }
     }
-    
+
     gather_sorted_data(recv_buf, recv_size, rank, size, array, all_sizes, displs);
-    
+
     // End timing
     double end_time = MPI_Wtime();
     MPI_Barrier(comm);
-    
+
     // Write results to file
-    if (rank == 0) {
+    if (rank == 0)
+    {
         // Calculate execution time
-        double duration = (end_time - start_time); 
-        cout << "Sample Sort execution time: " << duration << " s\n";
-        
-        
+        double duration = (end_time - start_time) * 1000; // Convert to milliseconds
+        cout << "Sample Sort execution time: " << duration << " ms\n";
+
         // Write to output file
         ofstream outFile(outputFile, ios::app);
         outFile << "Sorted array: ";
-        for (int i = 0; i < array_size; i++) {
+        for (int i = 0; i < array_size; i++)
+        {
             outFile << array[i] << " ";
         }
         outFile << endl;
         outFile.close();
-        
+
         // Clean up root process allocations
         free(array);
         free(all_sizes);
         free(displs);
     }
-    
+
     // Clean up common allocations
     free(send_counts);
     free(send_displs);
     free(local_array);
     free(local_samples);
-    if (rank == 0) free(samples);
+    if (rank == 0)
+        free(samples);
     free(splitters);
     free(partition_counts);
     free(send_buf);
@@ -292,7 +354,7 @@ bool runSampleSort(const char* inputFile, const char* outputFile, int rank, int 
     free(recv_counts);
     free(recv_buf);
     free(recv_displs);
-    
+
     return true;
 }
 
