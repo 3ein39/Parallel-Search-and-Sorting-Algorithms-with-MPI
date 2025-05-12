@@ -1,6 +1,6 @@
 #include <iostream>
 #include <vector>
-#include <mpi/mpi.h>
+#include <mpi.h>
 #include <cmath>
 #include <random>
 #include <fstream>
