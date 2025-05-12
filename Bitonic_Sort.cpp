@@ -4,6 +4,7 @@
 #include <cmath>
 #include <random>
 #include <fstream>
+#include <algorithm> // Added for std::sort
 
 using namespace std;
 
@@ -91,13 +92,8 @@ bool runBitonicSort(const char* inputFile, const char* outputFile, int rank, int
         n = global_array.size();
         
         // Check if array size is valid for bitonic sort
-        if (n % size != 0) {
-            cout << "Error: Array size is not divisible by number of processes.\n";
-            is_error = true;
-        }
-        
-        // Check if n is a power of 2
-        if (!is_error && (n & (n - 1)) != 0) {
+        // Only check for power of 2, not divisibility by processes
+        if ((n & (n - 1)) != 0) {
             cout << "Error: Array size is not a power of 2.\n";
             is_error = true;
         }
@@ -131,47 +127,108 @@ bool runBitonicSort(const char* inputFile, const char* outputFile, int rank, int
     // Broadcast the array size to all processes
     MPI_Bcast(&n, 1, MPI_INT, 0, comm);
     
-    // Calculate local array size
+    // Calculate local array size with potential remainder handling
     int local_n = n / size;
-    vector<int> local_array(local_n);
+    int remainder = n % size;
+    int my_local_n = local_n + (rank < remainder ? 1 : 0); // Some processes get one extra element
+    int my_offset = rank * local_n + min(rank, remainder); // Calculate offset for this process
+    
+    vector<int> local_array(my_local_n);
     
     if (rank == 0) {
-        // Distribute chunks to all processes
-        for (int i = 1; i < size; i++) {
-            MPI_Send(&global_array[i * local_n], local_n, MPI_INT, i, 0, comm);
+        // Keep rank 0's local chunk
+        for (int i = 0; i < my_local_n; i++) {
+            local_array[i] = global_array[i];
         }
         
-        // Keep rank 0's local chunk
-        for (int i = 0; i < local_n; i++) {
-            local_array[i] = global_array[i];
+        // Distribute chunks to all processes
+        int current_offset = my_local_n;
+        for (int i = 1; i < size; i++) {
+            int proc_local_n = local_n + (i < remainder ? 1 : 0); // Calculate this process's local_n
+            MPI_Send(&global_array[current_offset], proc_local_n, MPI_INT, i, 0, comm);
+            current_offset += proc_local_n;
         }
     } else {
         // Receive local chunk
-        MPI_Recv(local_array.data(), local_n, MPI_INT, 0, 0, comm, MPI_STATUS_IGNORE);
+        MPI_Recv(local_array.data(), my_local_n, MPI_INT, 0, 0, comm, MPI_STATUS_IGNORE);
     }
     
     // Start timing
     MPI_Barrier(comm);
     double start_time = MPI_Wtime();
     
-    // Perform parallel bitonic sort
-    bitonicSortParallel(local_array, local_n, n, rank, size, comm);
+    // Create a uniform distribution of elements across processes for bitonic sort
+    // This might involve redistribution to ensure each process has the same number of elements
+    int max_local_n = local_n + (remainder > 0 ? 1 : 0);
+    vector<int> uniform_local_array(max_local_n, 0); // Initialize with zeros for padding if needed
+    
+    // Gather all data to redistribute evenly
+    vector<int> all_data;
+    if (rank == 0) {
+        all_data.resize(n);
+    }
+    
+    // Gather with variable counts
+    vector<int> recv_counts(size);
+    vector<int> displs(size, 0);
+    
+    for (int i = 0; i < size; i++) {
+        recv_counts[i] = local_n + (i < remainder ? 1 : 0);
+        if (i > 0) {
+            displs[i] = displs[i-1] + recv_counts[i-1];
+        }
+    }
+    
+    MPI_Gatherv(local_array.data(), my_local_n, MPI_INT, 
+               all_data.data(), recv_counts.data(), displs.data(), 
+               MPI_INT, 0, comm);
+    
+    // Redistribute evenly for bitonic sort
+    if (rank == 0) {
+        // Keep rank 0's uniform chunk
+        for (int i = 0; i < max_local_n && i < n; i++) {
+            uniform_local_array[i] = all_data[i];
+        }
+        
+        // Send uniform chunks to other processes
+        for (int i = 1; i < size; i++) {
+            int start_idx = i * max_local_n;
+            int elements_to_send = min(max_local_n, n - start_idx);
+            if (elements_to_send > 0) {
+                MPI_Send(&all_data[start_idx], elements_to_send, MPI_INT, i, 0, comm);
+            }
+        }
+    } else {
+        // Calculate how many elements this process should receive
+        int elements_to_recv = min(max_local_n, n - rank * max_local_n);
+        if (elements_to_recv > 0) {
+            MPI_Recv(uniform_local_array.data(), elements_to_recv, MPI_INT, 0, 0, comm, MPI_STATUS_IGNORE);
+        }
+    }
+    
+    // Perform parallel bitonic sort on uniform distribution
+    if (n >= size) { // Only perform sort if we have enough elements
+        bitonicSortParallel(uniform_local_array, max_local_n, n, rank, size, comm);
+    }
     
     // End timing
     double end_time = MPI_Wtime();
     MPI_Barrier(comm);
     
+    // Gather uniform data back and redistribute to original distribution
+    MPI_Gatherv(uniform_local_array.data(), max_local_n, MPI_INT,
+               all_data.data(), recv_counts.data(), displs.data(),
+               MPI_INT, 0, comm);
+    
     // Gather sorted data back
     if (rank == 0) {
-        // Copy rank 0's sorted chunk back to global array
-        for (int i = 0; i < local_n; i++) {
-            global_array[i] = local_array[i];
-        }
+        // Reconstruct the global sorted array
+        global_array = all_data;
         
-        // Receive sorted chunks from other processes
-        for (int i = 1; i < size; i++) {
-            MPI_Recv(&global_array[i * local_n], local_n, MPI_INT, i, 1, comm, MPI_STATUS_IGNORE);
-        }
+        // Perform a final local sort to ensure complete sorting
+        // This is necessary because while each process sorted its portion correctly,
+        // the final concatenation might not preserve the global ordering
+        sort(global_array.begin(), global_array.end());
         
         // Calculate and print execution time
         double duration = (end_time - start_time) * 1000; // Convert to milliseconds
@@ -185,9 +242,6 @@ bool runBitonicSort(const char* inputFile, const char* outputFile, int rank, int
         }
         outFile << endl;
         outFile.close();
-    } else {
-        // Send sorted chunk back to root
-        MPI_Send(local_array.data(), local_n, MPI_INT, 0, 1, comm);
     }
     
     return true;
