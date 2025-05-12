@@ -10,6 +10,7 @@ extern void bitonicSortParallel(vector<int>& local_data, int local_n, int total_
 extern bool runBitonicSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm);
 extern bool runSampleSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm);
 extern bool runQuickSearch(const char* inputFile, const char* outputFile, int target, int rank, int size, MPI_Comm comm);
+extern bool runRadixSort(const char* inputFile, const char* outputFile, int rank, int size, MPI_Comm comm); // Add Radix Sort declaration
 
 
 // Function to read array data for Sorting and searching algorithms
@@ -136,12 +137,15 @@ int main(int argc, char **argv)
 
         case 4:
         {
-            if (rank == 0)
-            {
+            if (rank == 0) {
                 cout << "Running Radix Sort...\n";
-                // Read array data from file using the function readArrayData
-                // Call radix sort function here
             }
+            
+            // Call the wrapper function that handles everything
+            bool success = runRadixSort("in.txt", "out.txt", rank, size, MPI_COMM_WORLD);
+            
+            // Set error flag if sorting failed
+            is_error = !success;
             break;
         }
 
