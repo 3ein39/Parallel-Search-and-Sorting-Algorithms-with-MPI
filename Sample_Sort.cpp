@@ -8,11 +8,6 @@
 
 using namespace std;
 
-void generate_random(int *arr, int size)
-{
-    for (int i = 0; i < size; i++)
-        arr[i] = rand() % 100;
-}
 
 void quicksort(int *arr, int low, int high)
 {
@@ -149,12 +144,6 @@ bool runSampleSort(const char* inputFile, const char* outputFile, int rank, int 
                     array[i] = data[i];
                 }
                 
-                // Print unsorted array
-                cout << "Unsorted array: ";
-                for (int i = 0; i < array_size; i++) {
-                    cout << array[i] << " ";
-                }
-                cout << endl;
                 
                 // Also write to output file
                 ofstream outFile(outputFile);
@@ -270,13 +259,6 @@ bool runSampleSort(const char* inputFile, const char* outputFile, int rank, int 
     
     // Write results to file
     if (rank == 0) {
-        // Print sorted array
-        cout << "Sorted array: ";
-        for (int i = 0; i < array_size; i++) {
-            cout << array[i] << " ";
-        }
-        cout << endl;
-        
         // Calculate execution time
         double duration = (end_time - start_time) * 1000; // Convert to milliseconds
         cout << "Sample Sort execution time: " << duration << " ms\n";

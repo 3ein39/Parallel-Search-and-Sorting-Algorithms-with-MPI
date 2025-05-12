@@ -133,11 +133,6 @@ bool runRadixSort(const char* inputFile, const char* outputFile, int rank, int s
                 is_error = true;
             } else {
                 // Print the unsorted array
-                cout << "Unsorted array: ";
-                for (int i = 0; i < array_size; i++) {
-                    cout << global_array[i] << " ";
-                }
-                cout << endl;
                 
                 // Also write to output file
                 ofstream outFile(outputFile);
@@ -234,12 +229,6 @@ bool runRadixSort(const char* inputFile, const char* outputFile, int rank, int s
         }
         outFile << endl;
         
-        // Print sorted array and timing information
-        cout << "Sorted array: ";
-        for (int i = 0; i < array_size; i++) {
-            cout << global_array[i] << " ";
-        }
-        cout << endl;
         
         cout << "Radix Sort execution time: " << max_time * 1000 << " ms" << endl;
     }

@@ -100,12 +100,6 @@ bool runBitonicSort(const char* inputFile, const char* outputFile, int rank, int
         
         // Print the unsorted array
         if (!is_error) {
-            cout << "Unsorted array: ";
-            for (int i = 0; i < n; i++) {
-                cout << global_array[i] << " ";
-            }
-            cout << endl;
-            
             // Also write to output file
             ofstream outFile(outputFile);
             outFile << "Unsorted array: ";
