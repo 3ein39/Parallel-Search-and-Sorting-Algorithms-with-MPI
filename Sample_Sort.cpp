@@ -9,13 +9,6 @@
 
 using namespace std;
 
-inline void swap(int &a, int &b)
-{
-    int temp = a;
-    a = b;
-    b = temp;
-}
-
 int choose_pivot(int *arr, int low, int high)
 {
     int mid = low + (high - low) / 2;
