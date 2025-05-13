@@ -209,3 +209,26 @@ This function:
 - It's the reverse operation of MPI_Scatter
 
 These MPI functions, combined with the bitonic sort algorithm, create an efficient parallel sorting implementation that distributes work across multiple processes, significantly speeding up the sorting of large datasets.
+
+## 5. Complexity Analysis
+
+### Time Complexity
+- **Sequential Bitonic Sort**: O(n log² n) where n is the array size
+- **Parallel Bitonic Sort**: O((n/p) log² n) where p is the number of processes
+  - Local sorting: O((n/p) log(n/p)) per process
+  - Parallel merging: O((n/p) log p) per process
+  - The log² n term comes from log n phases with log n steps each
+
+### Space Complexity
+- **Sequential**: O(n) for array storage, in-place operations thereafter
+- **Parallel**: O(n/p) per process for local data storage
+  - Additional O(n/p) space for communication buffers
+  - Total memory usage across all processes remains O(n)
+
+### Communication Costs
+- **Number of Messages**: O(p log p) point-to-point messages
+- **Message Size**: O(n/p) elements per message
+- **Communication Volume**: O(n log p) total data transferred
+- **Communication Pattern**: Regular and predictable
+  - Each process communicates with log p partners
+  - Communication partners are determined by bitwise operations on rank

@@ -329,3 +329,27 @@ After quicksort within each process:
 6. **Optimization Opportunities**
    - The algorithm could be enhanced with an initial sampling step to improve data distribution
    - For extremely large datasets, a hierarchical approach might reduce communication overhead
+
+## 6. Complexity Analysis
+
+### Time Complexity
+- **Sequential Search**: O(n log n) for sorting + O(log n) for binary search
+  - Where n is the dataset size
+- **Parallel Quick Search**: O((n/p) log(n/p)) + O(log(n/p))
+  - Local data sorting: O((n/p) log(n/p)) per process
+  - Binary search: O(log(n/p)) per process
+  - Communication overhead: O(log p)
+
+### Space Complexity
+- **Sequential**: O(n) for storing the dataset
+- **Parallel**: O(n/p) per process for local dataset storage
+  - Each process only stores its portion of the dataset
+  - Additional O(1) space for search result communication
+
+### Communication Costs
+- **Broadcast Operation**: O(log p) time to broadcast dataset size
+- **Scatter Operation**: O(n/p) data + O(log p) time
+  - One-time distribution of dataset across processes
+- **Reduce Operation**: O(log p) time for combining search results
+  - Minimal data (single integer) per process
+- **Total Communication Volume**: O(n) + O(p log p)

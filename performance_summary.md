@@ -55,48 +55,80 @@ This document provides a summary of execution times for five parallel algorithms
 
 #### Quick Search (1,000,000 elements)
 
-| Number of Cores | Execution Time (ms) |
-|-----------------|---------------------|
-| 1 | 503.63 |
-| 2 | 220.63 |
-| 4 | 121.93 |
-| 8 | 78.36 |
+| Number of Cores | Execution Time (ms) | Speedup | Efficiency |
+|-----------------|---------------------|---------|------------|
+| 1 | 503.63 | 1.00 | 100% |
+| 2 | 220.63 | 2.28 | 114% |
+| 4 | 121.93 | 4.13 | 103% |
+| 8 | 78.36 | 6.43 | 80% |
 
 #### Prime Number Search (10,000,000 elements)
 
-| Number of Cores | Execution Time (ms) |
-|-----------------|---------------------|
-| 1 | 6738.00 |
-| 2 | 3125.42 |
-| 4 | 1532.87 |
-| 8 | 865.23 |
+| Number of Cores | Execution Time (ms) | Speedup | Efficiency |
+|-----------------|---------------------|---------|------------|
+| 1 | 6738.00 | 1.00 | 100% |
+| 2 | 3125.42 | 2.16 | 108% |
+| 4 | 1532.87 | 4.40 | 110% |
+| 8 | 865.23 | 7.79 | 97% |
 
 #### Bitonic Sort (65,536 elements)
 
-| Number of Cores | Execution Time (ms) |
-|-----------------|---------------------|
-| 1 | 642.37 |
-| 2 | 325.84 |
-| 4 | 183.65 |
-| 8 | 98.42 |
+| Number of Cores | Execution Time (ms) | Speedup | Efficiency |
+|-----------------|---------------------|---------|------------|
+| 1 | 642.37 | 1.00 | 100% |
+| 2 | 325.84 | 1.97 | 99% |
+| 4 | 183.65 | 3.50 | 87% |
+| 8 | 98.42 | 6.53 | 82% |
 
 #### Radix Sort (65,536 elements)
 
-| Number of Cores | Execution Time (ms) |
-|-----------------|---------------------|
-| 1 | 482.65 |
-| 2 | 236.48 |
-| 4 | 127.84 |
-| 8 | 72.56 |
+| Number of Cores | Execution Time (ms) | Speedup | Efficiency |
+|-----------------|---------------------|---------|------------|
+| 1 | 482.65 | 1.00 | 100% |
+| 2 | 236.48 | 2.04 | 102% |
+| 4 | 127.84 | 3.77 | 94% |
+| 8 | 72.56 | 6.65 | 83% |
 
 #### Sample Sort (65,536 elements)
 
-| Number of Cores | Execution Time (ms) |
-|-----------------|---------------------|
-| 1 | 563.24 |
-| 2 | 287.93 |
-| 4 | 152.38 |
-| 8 | 83.17 |
+| Number of Cores | Execution Time (ms) | Speedup | Efficiency |
+|-----------------|---------------------|---------|------------|
+| 1 | 563.24 | 1.00 | 100% |
+| 2 | 287.93 | 1.96 | 98% |
+| 4 | 152.38 | 3.70 | 92% |
+| 8 | 83.17 | 6.77 | 85% |
+
+## Speedup and Efficiency Analysis
+
+### Speedup
+Speedup measures how much faster the parallel algorithm runs compared to the sequential version. It is calculated as:
+```
+Speedup(p) = T(1) / T(p)
+```
+Where T(1) is the execution time with 1 core and T(p) is the execution time with p cores.
+
+### Efficiency
+Efficiency measures how well the processors are utilized. It is calculated as:
+```
+Efficiency(p) = Speedup(p) / p × 100%
+```
+Efficiency of 100% represents perfect linear speedup. Values above 100% indicate super-linear speedup, which can occur due to caching effects.
+
+### Key Observations
+
+1. **Super-linear Speedup**: Prime Number Search and Quick Search show super-linear speedup for certain core counts, likely due to better cache utilization when the problem is divided across multiple cores.
+
+2. **Scaling Patterns**:
+   - Prime Number Search shows the best scaling, achieving 7.79× speedup with 8 cores (97% efficiency)
+   - Quick Search initially shows super-linear speedup but efficiency drops to 80% at 8 cores
+   - Sorting algorithms maintain 82-85% efficiency at 8 cores
+
+3. **Communication Overhead**: The decrease in efficiency with higher core counts indicates increasing communication overhead, particularly for the sorting algorithms that require more data exchange.
+
+4. **Algorithm Comparison**:
+   - Sample Sort shows the most consistent scaling among sorting algorithms
+   - Prime Number Search has the highest overall efficiency, reflecting its computation-dominated nature
+   - Quick Search shows the highest efficiency at low core counts but diminishes most rapidly
 
 ## Observations
 

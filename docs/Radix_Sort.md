@@ -376,3 +376,30 @@ After `MPI_Scatterv`:
    - Using non-blocking communication to overlap computation and communication
    - Implementing a hierarchical approach for large process counts
    - Custom distribution strategies for skewed data distributions
+
+## 6. Complexity Analysis
+
+### Time Complexity
+- **Sequential Radix Sort**: O(d × n) where:
+  - n is the array size
+  - d is the number of digits in the maximum number
+- **Parallel Radix Sort**: O(d × n/p + d × p) where:
+  - p is the number of processes
+  - Local processing: O(d × n/p) per process
+  - All-to-all communication: O(d × p) per process
+
+### Space Complexity
+- **Sequential**: O(n) for auxiliary arrays in counting sort
+- **Parallel**: O(n/p) per process for local data storage
+  - Additional O(p) space per process for communication buffers
+  - O(BASE) space for digit counts (constant as BASE=10)
+  - Root process: O(n) for final result array
+
+### Communication Costs
+- **Per Digit Iteration**:
+  - All-to-all counts: O(p²) small messages
+  - All-to-all data: O(n) total data transferred
+- **Total Communication Volume**: O(d × n) over all iterations
+- **Latency Impact**: O(d × p) startup costs across all iterations
+- **Data Exchange Pattern**: Non-uniform, dependent on data distribution
+

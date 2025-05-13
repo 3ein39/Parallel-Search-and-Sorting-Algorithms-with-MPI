@@ -201,3 +201,27 @@ This demonstrates how the work is evenly distributed across processes, with each
    - For extremely large numbers, a more efficient primality test could be used
    - The Sieve of Eratosthenes could be implemented in parallel for potentially better performance
    - I/O operations could be optimized further for very large result sets
+
+## 5. Complexity Analysis
+
+### Time Complexity
+- **Sequential**: O(N√N) where N is the range size (end - start + 1)
+  - Each number requires O(√n) operations to check primality
+- **Parallel**: O(N√N/p) where p is the number of processes
+  - Each process handles approximately N/p numbers
+  - Ideal speedup is linear with the number of processes
+
+### Space Complexity
+- **Sequential**: O(π(N)) where π(N) is the prime-counting function
+  - Storage needed for all prime numbers in the range
+- **Parallel**: O(π(N)/p) per process plus O(π(N)) for the root process
+  - Each process stores only its local primes
+  - Root process ultimately stores all primes
+
+### Communication Costs
+- **Gather operation**: O(p) small messages + O(π(N)) total data
+  - Each process sends one integer (count) to the root
+- **Gatherv operation**: O(π(N)) total data transferred
+  - Each process sends its local primes to the root
+  - Communication is one-sided (process→root only)
+  - No intermediate communication during computation

@@ -521,3 +521,17 @@ After `MPI_Alltoallv`:
    - Using non-blocking communication to overlap computation and communication
    - Hybrid parallelization with OpenMP for multi-core nodes
    - Specialized handling for skewed data distributions
+
+## 6. Complexity Analysis
+
+### Time Complexity
+- **Sequential Sorting**: O(n log n) where n is the array size
+- **Parallel Sample Sort**: O(n/p log n/p + p log p) where p is the number of processes
+
+
+### Space Complexity
+- **Sequential**: O(n) for in-place quicksort with O(log n) stack space
+- **Parallel**: O(n) per process for local data
+
+### Communication Costs
+- **Final gather**: O(n) data + O(log p) latency
